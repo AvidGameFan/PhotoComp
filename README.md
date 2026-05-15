@@ -19,22 +19,22 @@ A desktop photo comparison tool for Windows and Linux. Open a folder of images a
 
 ## Requirements
 
-- .NET 10 runtime (or use the self-contained build — no install required)
+- No .NET install required — the zip already bundles the .NET 10 runtime alongside the app
 
 ---
 
 ## Running
 
-### Self-contained build (no .NET install needed)
+### From the zip
 
-Download the zip for your platform from the [Releases](#) page, extract it, and run:
+The zip contains a folder of files — the app and the bundled .NET 10 runtime. There is no single-file executable; just extract the zip and run the binary inside.
 
-**Windows**
+**Windows** — extract `PhotoComp-windows-x64-vX.Y.Z.zip`, then:
 ```
 PhotoComp.exe
 ```
 
-**Linux**
+**Linux** — extract `PhotoComp-linux-x64-vX.Y.Z.zip`, then:
 ```bash
 chmod +x PhotoComp
 ./PhotoComp
