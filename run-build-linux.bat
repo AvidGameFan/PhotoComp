@@ -1,1 +1,1 @@
-powershell -ExecutionPolicy Bypass -File .\build-linux.ps1
+powershell -ExecutionPolicy Bypass -File .\build-linux.ps1 %*
