@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhotoComp.ViewModels"
+             xmlns:conv="using:PhotoComp.Converters"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             x:Class="PhotoComp.Views.ImagePanelView"
+             x:DataType="vm:ImagePanelViewModel"
+             Focusable="True">
+
+    <UserControl.Resources>
+        <conv:StringToBitmapConverter x:Key="StringToBitmapConverter"/>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <!-- When the heart is active, colour its glyph red. -->
+        <Style Selector="TextBlock.hearted">
+            <Setter Property="Foreground" Value="#FF6B6B"/>
+        </Style>
+
+        <!--
+            Override Fluent theme's default button hover/press styles.
+            Without these, the ContentPresenter background goes solid black on hover,
+            making the glyph (white text on transparent button) invisible.
+            We swap it for a subtle white tint instead, keeping the dark pill visible.
+        -->
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#40FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#66FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Design.DataContext>
+        <vm:ImagePanelViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+
+        <!-- Dark background + clipped image area -->
+        <Border Background="#1A1A1A" ClipToBounds="True">
+            <Image x:Name="MainImage"
+                   Source="{Binding CurrentImage.FilePath, Converter={StaticResource StringToBitmapConverter}}"
+                   Stretch="Uniform"
+                   RenderTransformOrigin="0,0"/>
+        </Border>
+
+        <!-- Left navigation button — dark pill ensures visibility over any image content -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Center"
+                Background="#CC000000" CornerRadius="4" Margin="6,0">
+            <Button Command="{Binding NavigatePreviousCommand}"
+                    Background="Transparent" BorderThickness="0"
+                    Foreground="White" Padding="10,8"
+                    ToolTip.Tip="Previous (←)">◄</Button>
+        </Border>
+
+        <!-- Right navigation button -->
+        <Border HorizontalAlignment="Right" VerticalAlignment="Center"
+                Background="#CC000000" CornerRadius="4" Margin="6,0">
+            <Button Command="{Binding NavigateNextCommand}"
+                    Background="Transparent" BorderThickness="0"
+                    Foreground="White" Padding="10,8"
+                    ToolTip.Tip="Next (→)">►</Button>
+        </Border>
+
+        <!-- Heart button (top-right) — red glyph when hearted, white when not -->
+        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
+                Background="#CC000000" CornerRadius="4" Margin="0,6,8,0">
+            <Button Command="{Binding ToggleHeartCommand}"
+                    Background="Transparent" BorderThickness="0"
+                    Foreground="White" Padding="8,4" FontSize="22"
+                    ToolTip.Tip="Toggle favourite">
+                <TextBlock Text="{Binding HeartGlyph}"
+                           Classes.hearted="{Binding IsCurrentHearted}"/>
+            </Button>
+        </Border>
+
+        <!-- Info overlay (bottom-left): dimensions and date/time -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Background="#CC000000" CornerRadius="0,4,0,0"
+                IsHitTestVisible="False">
+            <TextBlock Text="{Binding InfoText}"
+                       Foreground="White" FontSize="11"
+                       Margin="6,3"/>
+        </Border>
+
+    </Grid>
+</UserControl>

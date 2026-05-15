@@ -1,0 +1,26 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PhotoComp.Views.MessageDialog"
+        SizeToContent="WidthAndHeight"
+        MinWidth="320" MaxWidth="560"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <StackPanel Margin="20,16" Spacing="14">
+
+        <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
+            <TextBlock x:Name="MessageText"
+                       TextWrapping="Wrap"
+                       FontSize="13"
+                       LineHeight="20"/>
+        </ScrollViewer>
+
+        <Button x:Name="OkButton"
+                Content="  OK  "
+                HorizontalAlignment="Right"
+                IsDefault="True"/>
+
+    </StackPanel>
+
+</Window>

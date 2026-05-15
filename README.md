@@ -1,0 +1,2 @@
+# PhotoComp
+Image comparison utility

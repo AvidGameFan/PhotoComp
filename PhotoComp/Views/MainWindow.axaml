@@ -1,0 +1,143 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PhotoComp.ViewModels"
+        xmlns:v="using:PhotoComp.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+        x:Class="PhotoComp.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="PhotoComp"
+        MinWidth="600" MinHeight="400">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <!-- Root Grid lets us layer the loading overlay on top of the DockPanel -->
+    <Grid>
+
+    <DockPanel>
+
+        <!-- ── Toolbar ─────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Top"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="8,4">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+
+                <Button Command="{Binding LoadFolderCommand}"
+                        ToolTip.Tip="Open a folder of images">
+                    📁  Open Folder
+                </Button>
+
+                <Separator/>
+
+                <Button Command="{Binding CopySelectedCommand}"
+                        IsEnabled="{Binding HasSelections}"
+                        ToolTip.Tip="Copy selected images to another folder">
+                    <TextBlock>
+                        <Run Text="💾  Copy Selected ("/>
+                        <Run Text="{Binding SelectedCount}"/>
+                        <Run Text=")"/>
+                    </TextBlock>
+                </Button>
+
+                <Separator/>
+
+                <TextBlock VerticalAlignment="Center" Opacity="0.7" FontSize="12">
+                    <Run Text="Zoom: "/>
+                    <Run Text="{Binding SharedZoom.Scale, StringFormat={}{0:P0}}"/>
+                </TextBlock>
+
+                <Button Command="{Binding ResetZoomCommand}"
+                        Padding="6,4"
+                        ToolTip.Tip="Reset zoom to 100%">
+                    ⊙ Reset Zoom
+                </Button>
+
+                <Separator/>
+
+                <Button Command="{Binding ToggleSingleViewCommand}"
+                        Padding="6,4"
+                        ToolTip.Tip="Toggle between single-panel and dual-panel view">
+                    <TextBlock Text="{Binding SingleViewButtonLabel}"/>
+                </Button>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ── Status bar ──────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Bottom"
+                Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="8,3">
+            <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock FontSize="11">
+                    <Run Text="Left: "/>
+                    <Run Text="{Binding LeftPanel.PositionLabel}"/>
+                </TextBlock>
+                <TextBlock FontSize="11" Opacity="0.4">│</TextBlock>
+                <TextBlock FontSize="11">
+                    <Run Text="Right: "/>
+                    <Run Text="{Binding RightPanel.PositionLabel}"/>
+                </TextBlock>
+                <TextBlock FontSize="11" Opacity="0.4">│</TextBlock>
+                <TextBlock FontSize="11">
+                    <Run Text="Selected: "/>
+                    <Run Text="{Binding SelectedCount}"/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- ── Two image panels ────────────────────────────────────── -->
+        <Grid x:Name="PanelsGrid">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="150"/>
+                <ColumnDefinition Width="4"/>
+                <ColumnDefinition Width="*" MinWidth="0"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left panel -->
+            <Panel Grid.Column="0">
+                <v:ImagePanelView DataContext="{Binding LeftPanel}"/>
+                <TextBlock IsVisible="{Binding LeftPanel, Converter={x:Static ObjectConverters.IsNull}}"
+                           Text="Open a folder to begin."
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Opacity="0.5"/>
+            </Panel>
+
+            <!-- Fixed divider (non-draggable) -->
+            <Border Grid.Column="1"
+                    IsVisible="{Binding IsDualView}"
+                    Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
+
+            <!-- Right panel -->
+            <Panel Grid.Column="2" IsVisible="{Binding IsDualView}">
+                <v:ImagePanelView DataContext="{Binding RightPanel}"/>
+                <TextBlock IsVisible="{Binding RightPanel, Converter={x:Static ObjectConverters.IsNull}}"
+                           Text="Open a folder to begin."
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Opacity="0.5"/>
+            </Panel>
+
+        </Grid>
+
+    </DockPanel>
+
+    <!-- Loading overlay — dims the window and shows a wait cursor while images are scanned -->
+    <Border IsVisible="{Binding IsLoading}"
+            Background="#66000000"
+            IsHitTestVisible="True"
+            Cursor="Wait">
+        <TextBlock Text="Loading…"
+                   Foreground="White" FontSize="20" FontWeight="SemiBold"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    </Border>
+
+    </Grid>
+
+</Window>
