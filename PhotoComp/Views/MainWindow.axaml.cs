@@ -28,6 +28,7 @@ public partial class MainWindow : Window
         vm.PickSourceFolderAsync = PickFolderAsync;
         vm.PickDestFolderAsync   = PickFolderAsync;
         vm.ShowAlertAsync        = ShowAlertAsync;
+        vm.ConfirmAsync          = ConfirmAsync;
         vm.PropertyChanged += OnVmPropertyChanged;
         _lastVm = vm;
     }
@@ -70,5 +71,12 @@ public partial class MainWindow : Window
     {
         var dialog = new MessageDialog(title, message);
         return dialog.ShowDialog(this);
+    }
+
+    private async Task<bool> ConfirmAsync(string title, string message)
+    {
+        var dialog = new ConfirmDialog(title, message);
+        await dialog.ShowDialog(this);
+        return dialog.Result;
     }
 }

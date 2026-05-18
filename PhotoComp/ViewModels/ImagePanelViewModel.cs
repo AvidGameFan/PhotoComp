@@ -78,6 +78,19 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// Injected by <see cref="MainWindowViewModel"/> to handle delete confirmation and
+    /// execution. Null-safe: no-ops if not set (e.g. in construction-time design data).
+    /// </summary>
+    public Func<ImageItem, Task>? RequestDeleteAsync { get; set; }
+
+    [RelayCommand]
+    private async Task DeleteCurrent()
+    {
+        if (CurrentImage is null) return;
+        await (RequestDeleteAsync?.Invoke(CurrentImage) ?? Task.CompletedTask);
+    }
+
+    /// <summary>
     /// Raised when the heart is toggled so MainWindowViewModel can refresh SelectedCount.
     /// </summary>
     public event EventHandler? HeartToggled;

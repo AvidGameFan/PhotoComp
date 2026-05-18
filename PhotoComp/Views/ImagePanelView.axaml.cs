@@ -145,6 +145,10 @@ public partial class ImagePanelView : UserControl
                 vm.NavigateNextCommand.Execute(null);
                 e.Handled = true;
                 break;
+            case Key.Delete:
+                vm.DeleteCurrentCommand.Execute(null);
+                e.Handled = true;
+                break;
         }
     }
 }

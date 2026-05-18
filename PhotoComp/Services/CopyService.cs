@@ -11,12 +11,9 @@ public sealed record CopyResult(
 
 public static class CopyService
 {
-    private static readonly string[] SidecarExtensions = [".json", ".txt"];
-
     /// <summary>
     /// Copies each file in <paramref name="filePaths"/> to <paramref name="destinationFolder"/>.
-    /// For each image, looks for a sidecar file with the same base name and a .json or .txt
-    /// extension, and copies it too if found.
+    /// For each image, also copies any sidecar files found by <see cref="SidecarService"/>.
     /// Files that already exist at the destination are skipped (non-destructive).
     /// Per-file errors are captured rather than thrown, so a single bad file never
     /// aborts the rest of the operation.
@@ -32,15 +29,8 @@ public static class CopyService
         {
             TryCopyOne(src, destinationFolder, ref copied, ref skipped, failures);
 
-            // Sidecar: same directory, same base name, .json or .txt
-            var dir  = System.IO.Path.GetDirectoryName(src) ?? string.Empty;
-            var stem = System.IO.Path.GetFileNameWithoutExtension(src);
-            foreach (var ext in SidecarExtensions)
-            {
-                var sidecar = System.IO.Path.Combine(dir, stem + ext);
-                if (System.IO.File.Exists(sidecar))
-                    TryCopyOne(sidecar, destinationFolder, ref copied, ref skipped, failures);
-            }
+            foreach (var sidecar in SidecarService.FindSidecars(src))
+                TryCopyOne(sidecar, destinationFolder, ref copied, ref skipped, failures);
         }
 
         return new CopyResult(copied, skipped, failures);

@@ -79,6 +79,15 @@
             </Button>
         </Border>
 
+        <!-- Delete button (top-left) — subtle red foreground signals destructive action -->
+        <Border HorizontalAlignment="Left" VerticalAlignment="Top"
+                Background="#CC000000" CornerRadius="4" Margin="8,6,0,0">
+            <Button Command="{Binding DeleteCurrentCommand}"
+                    Background="Transparent" BorderThickness="0"
+                    Foreground="#FF8080" Padding="8,4" FontSize="18"
+                    ToolTip.Tip="Delete image (Del)">🗑</Button>
+        </Border>
+
         <!-- Info overlay (bottom-left): dimensions and date/time -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Bottom"
                 Background="#CC000000" CornerRadius="0,4,0,0"

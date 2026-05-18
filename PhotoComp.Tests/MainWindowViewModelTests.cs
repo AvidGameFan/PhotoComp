@@ -558,4 +558,150 @@ public class MainWindowViewModelTests : IDisposable
             if (Directory.Exists(destDir)) Directory.Delete(destDir, recursive: true);
         }
     }
+
+    // ── DeleteImageAsync ──────────────────────────────────────────────
+
+    // Helper: loads the folder and wires ConfirmAsync to return the given answer.
+    private async Task<MainWindowViewModel> MakeVmWithLoaded(bool confirmAnswer = true)
+    {
+        var vm = MakeVm();
+        vm.ConfirmAsync   = (_, _) => Task.FromResult(confirmAnswer);
+        vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        return vm;
+    }
+
+    [Fact]
+    public async Task Delete_Confirmed_RemovesFileFromDisk()
+    {
+        var path = WriteJpeg("del.jpg", DateTime.Now);
+        var vm   = await MakeVmWithLoaded(confirmAnswer: true);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
+    public async Task Delete_Declined_LeavesFileOnDisk()
+    {
+        var path = WriteJpeg("keep.jpg", DateTime.Now);
+        var vm   = await MakeVmWithLoaded(confirmAnswer: false);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.True(File.Exists(path));
+    }
+
+    [Fact]
+    public async Task Delete_Confirmed_RemovesImageFromList()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = await MakeVmWithLoaded(confirmAnswer: true);
+        var toDelete = vm.LeftPanel!.CurrentImage!;
+
+        await vm.DeleteImageAsync(toDelete);
+
+        Assert.DoesNotContain(vm.Images, i => i.FilePath == toDelete.FilePath);
+    }
+
+    [Fact]
+    public async Task Delete_Confirmed_DecrementsImageCount()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = await MakeVmWithLoaded(confirmAnswer: true);
+        var before = vm.Images.Count;
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.Equal(before - 1, vm.Images.Count);
+    }
+
+    [Fact]
+    public async Task Delete_Declined_DoesNotChangeImageCount()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = await MakeVmWithLoaded(confirmAnswer: false);
+        var before = vm.Images.Count;
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.Equal(before, vm.Images.Count);
+    }
+
+    [Fact]
+    public async Task Delete_Confirmed_AlsoDeletesJsonSidecar()
+    {
+        WriteJpeg("photo.jpg", DateTime.Now);
+        var sidecar = Path.Combine(_tempDir, "photo.json");
+        File.WriteAllText(sidecar, "{}");
+        var vm = await MakeVmWithLoaded(confirmAnswer: true);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.False(File.Exists(sidecar));
+    }
+
+    [Fact]
+    public async Task Delete_ConfirmMessage_IncludesSidecarName_WhenSidecarExists()
+    {
+        WriteJpeg("photo.jpg", DateTime.Now);
+        File.WriteAllText(Path.Combine(_tempDir, "photo.json"), "{}");
+        string? capturedMessage = null;
+        var vm = MakeVm();
+        vm.ConfirmAsync   = (_, m) => { capturedMessage = m; return Task.FromResult(false); };
+        vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.Contains("photo.json", capturedMessage);
+    }
+
+    [Fact]
+    public async Task Delete_ConfirmMessage_DoesNotMentionSidecar_WhenAbsent()
+    {
+        WriteJpeg("photo.jpg", DateTime.Now);
+        string? capturedMessage = null;
+        var vm = MakeVm();
+        vm.ConfirmAsync   = (_, m) => { capturedMessage = m; return Task.FromResult(false); };
+        vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.DoesNotContain(".json", capturedMessage);
+        Assert.DoesNotContain(".txt",  capturedMessage);
+    }
+
+    [Fact]
+    public async Task Delete_DoesNotDelete_WhenConfirmAsyncIsNull()
+    {
+        var path = WriteJpeg("safe.jpg", DateTime.Now);
+        var vm   = MakeVm();
+        // ConfirmAsync intentionally left null — should default to false (no delete)
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.True(File.Exists(path));
+    }
+
+    [Fact]
+    public async Task Delete_PanelsRebuildAfterDeletion()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = await MakeVmWithLoaded(confirmAnswer: true);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        // Panels must be non-null and pointing within bounds of the new (smaller) list
+        Assert.NotNull(vm.LeftPanel);
+        Assert.InRange(vm.LeftPanel!.CurrentIndex, 0, Math.Max(0, vm.Images.Count - 1));
+    }
 }
+

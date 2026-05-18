@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PhotoComp.Views.ConfirmDialog"
+        SizeToContent="WidthAndHeight"
+        MinWidth="340" MaxWidth="560"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <StackPanel Margin="20,16" Spacing="14">
+
+        <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
+            <TextBlock x:Name="MessageText"
+                       TextWrapping="Wrap"
+                       FontSize="13"
+                       LineHeight="20"/>
+        </ScrollViewer>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <!-- Cancel is mapped to Esc — safe default for a destructive dialog -->
+            <Button x:Name="NoButton"
+                    Content="  Cancel  "
+                    IsCancel="True"/>
+            <Button x:Name="YesButton"
+                    Content="  Delete  "
+                    Foreground="#FF6060"/>
+        </StackPanel>
+
+    </StackPanel>
+
+</Window>
