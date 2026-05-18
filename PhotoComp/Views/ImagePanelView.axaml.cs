@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Input.GestureRecognizers;
 using Avalonia.Media;
 using PhotoComp.Models;
 using PhotoComp.ViewModels;
@@ -16,6 +17,9 @@ public partial class ImagePanelView : UserControl
     private bool _isPanning;
     private ZoomState? _attachedZoom;
 
+    private bool _isPinching;
+    private double _lastPinchScale = 1.0;
+
     private const double MinScale = 0.1;
     private const double MaxScale = 10.0;
     private const double ZoomFactor = 1.15;
@@ -24,6 +28,9 @@ public partial class ImagePanelView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        GestureRecognizers.Add(new PinchGestureRecognizer());
+        AddHandler(InputElement.PinchEvent, OnPinch);
+        AddHandler(InputElement.PinchEndedEvent, OnPinchEnded);
     }
 
     private ImagePanelViewModel? PanelViewModel => DataContext as ImagePanelViewModel;
@@ -56,7 +63,45 @@ public partial class ImagePanelView : UserControl
         MainImage.RenderTransform = group;
     }
 
-    // ── Zoom (mouse wheel) ────────────────────────────────────────────
+    // ── Zoom (touchscreen pinch) ─────────────────────────────────────
+
+    private void OnPinch(object? sender, PinchEventArgs e)
+    {
+        if (_attachedZoom is null) return;
+
+        // Cancel any pan that started from the first touch contact
+        _isPanning = false;
+
+        if (!_isPinching)
+        {
+            _isPinching = true;
+            _lastPinchScale = 1.0;
+        }
+
+        var pinchCenter = e.ScaleOrigin;
+
+        // e.Scale is cumulative from gesture start; derive a per-event delta
+        var scaleDelta = e.Scale / _lastPinchScale;
+        _lastPinchScale = e.Scale;
+
+        var oldScale = _attachedZoom.Scale;
+        var newScale = Math.Clamp(oldScale * scaleDelta, MinScale, MaxScale);
+        var factor = newScale / oldScale;
+
+        _attachedZoom.OffsetX = pinchCenter.X - (pinchCenter.X - _attachedZoom.OffsetX) * factor;
+        _attachedZoom.OffsetY = pinchCenter.Y - (pinchCenter.Y - _attachedZoom.OffsetY) * factor;
+        _attachedZoom.Scale = newScale;
+
+        e.Handled = true;
+    }
+
+    private void OnPinchEnded(object? sender, PinchEndedEventArgs e)
+    {
+        _isPinching = false;
+        _lastPinchScale = 1.0;
+    }
+
+    // ── Zoom (mouse wheel / touchpad) ─────────────────────────────────
 
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
