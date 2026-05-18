@@ -22,8 +22,15 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(CopySelectedCommand))]
     private IReadOnlyList<ImageItem> _images = [];
 
-    [ObservableProperty] private ImagePanelViewModel? _leftPanel;
-    [ObservableProperty] private ImagePanelViewModel? _rightPanel;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PushLeftToRightCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PushRightToLeftCommand))]
+    private ImagePanelViewModel? _leftPanel;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PushLeftToRightCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PushRightToLeftCommand))]
+    private ImagePanelViewModel? _rightPanel;
     [ObservableProperty] private bool _isLoading;
 
     public int SelectedCount => _selectedPaths.Count;
@@ -95,6 +102,22 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [RelayCommand]
     private void ResetZoom() => SharedZoom.Reset();
+
+    private bool CanPushPanels => LeftPanel is not null && RightPanel is not null;
+
+    [RelayCommand(CanExecute = nameof(CanPushPanels))]
+    private void PushLeftToRight()
+    {
+        if (LeftPanel is null || RightPanel is null) return;
+        RightPanel.CurrentIndex = LeftPanel.CurrentIndex;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanPushPanels))]
+    private void PushRightToLeft()
+    {
+        if (LeftPanel is null || RightPanel is null) return;
+        LeftPanel.CurrentIndex = RightPanel.CurrentIndex;
+    }
 
     private ImagePanelViewModel CreatePanel(int startIndex)
     {

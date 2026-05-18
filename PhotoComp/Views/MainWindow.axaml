@@ -108,6 +108,15 @@
                            Text="Open a folder to begin."
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Opacity="0.5"/>
+                <!-- Push left→right button (top-center, only in dual view) -->
+                <Border IsVisible="{Binding IsDualView}"
+                        HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Background="#CC000000" CornerRadius="4" Margin="0,6,0,0">
+                    <Button Command="{Binding PushLeftToRightCommand}"
+                            Background="Transparent" BorderThickness="0"
+                            Foreground="White" Padding="10,4" FontSize="14"
+                            ToolTip.Tip="Show this image in the right panel">→</Button>
+                </Border>
             </Panel>
 
             <!-- Fixed divider (non-draggable) -->
@@ -122,6 +131,14 @@
                            Text="Open a folder to begin."
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Opacity="0.5"/>
+                <!-- Push right→left button (top-center) -->
+                <Border HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Background="#CC000000" CornerRadius="4" Margin="0,6,0,0">
+                    <Button Command="{Binding PushRightToLeftCommand}"
+                            Background="Transparent" BorderThickness="0"
+                            Foreground="White" Padding="10,4" FontSize="14"
+                            ToolTip.Tip="Show this image in the left panel">←</Button>
+                </Border>
             </Panel>
 
         </Grid>
