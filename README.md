@@ -1,17 +1,19 @@
 # PhotoComp
 
-A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favourites with a heart, then copy them — along with any sidecar files — to a destination folder.
+A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favourites with a heart, then copy them — along with any sidecar files — to a destination folder. Delete unwanted images directly from the app, including their RAW originals and metadata sidecars.
 
 ---
 
 ## Features
 
 - **Side-by-side panels** — two independent image panels displayed simultaneously
-- **Synchronized zoom & pan** — mouse-wheel zoom and drag-to-pan affect both panels at once; double-click to reset
+- **Synchronized zoom & pan** — mouse-wheel zoom, touchpad pinch, touchscreen pinch, and drag-to-pan affect both panels at once; double-click to reset
 - **Independent navigation** — each panel navigates through the image list separately using on-screen buttons or arrow keys
+- **Push to other panel** — `→` / `←` buttons at the top of each panel instantly load its current image into the opposite panel
 - **EXIF-sorted loading** — images are sorted by date taken (falls back to file modification time when EXIF is absent)
 - **Favorite selection** — click the heart icon on any image to mark it; click again to deselect
-- **Copy with sidecars** — copies selected images to a chosen folder; automatically copies matching `.json` or `.txt` sidecar files alongside each image
+- **Copy with sidecars** — copies selected images to a chosen folder; automatically copies matching sidecar files (RAW, XMP, JSON, TXT) alongside each image
+- **Delete with sidecars** — permanently deletes the current image and any accompanying sidecar files after confirmation
 - **Single/dual view toggle** — switch between side-by-side and single-panel view from the toolbar
 - **Busy indicator** — a loading overlay and wait cursor appear while a large folder is being scanned
 
@@ -62,12 +64,15 @@ Click **📁 Open Folder** in the toolbar and choose a folder containing JPEG or
 |--------|--------|
 | Click **◄** / **►** buttons | Move to previous / next image in that panel |
 | Click a panel, then **← →** arrow keys | Keyboard navigation for the focused panel |
+| Click **→** (top of left panel) | Load the left panel's current image into the right panel |
+| Click **←** (top of right panel) | Load the right panel's current image into the left panel |
 
 ### Zooming and panning
 
 | Action | Result |
 |--------|--------|
-| Mouse wheel | Zoom in / out (both panels, 0.1× – 10×) |
+| Mouse wheel or touchpad pinch | Zoom in / out (both panels, 0.1× – 10×) |
+| Touchscreen two-finger pinch | Zoom in / out on touch displays |
 | Left-drag | Pan the image (both panels move together) |
 | Double-click | Reset zoom and pan to defaults |
 | **⊙ Reset Zoom** button | Same as double-click |
@@ -85,7 +90,11 @@ Click the **♡** heart icon in the top-right corner of a panel to mark the curr
 3. Choose a destination folder.
 4. A summary dialog reports how many files were copied, how many were skipped (already present), and details of any errors.
 
-For each image copied, PhotoComp also copies a matching `.json` or `.txt` sidecar file from the same source folder if one exists (e.g. `IMG_1234.jpg` → also copies `IMG_1234.json`). Originals are never modified or overwritten.
+For each image copied, PhotoComp also copies any matching sidecar files from the same source folder — RAW originals (`.arw`, `.cr2`, `.cr3`, `.nef`, `.raf`, `.rw2`, and [many more](#sidecar-formats)), XMP metadata (`.xmp`), and plain-text companions (`.json`, `.txt`). For example, `IMG_1234.jpg` will carry over `IMG_1234.arw` and `IMG_1234.xmp` if they exist. Originals are never modified or overwritten.
+
+### Deleting images
+
+Press **Del** on the keyboard (or use the delete button in the panel) to permanently delete the current image. A confirmation dialog lists the image and any sidecar files that will also be removed. Deletion cannot be undone.
 
 ### Single-panel view
 
@@ -103,17 +112,26 @@ Each panel shows a small overlay in the bottom-left corner with the image's pixe
 
 ## Building
 
-### Windows (produces `dist\PhotoComp-windows-x64-vX.Y.Z.zip`)
+The default version number is read from `version.txt` in the repository root. Edit that file to change it project-wide, or pass `-Version` / a positional argument to override for a single build.
+
+### Windows x64 (produces `dist\PhotoComp-windows-x64-vX.Y.Z.zip`)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
-powershell -ExecutionPolicy Bypass -File .\build-windows.ps1 -Version "1.2.0"
+.\run-build-windows.bat
+.\run-build-windows.bat 1.2.0
 ```
 
-### Linux from Windows (cross-compile, produces `dist\PhotoComp-linux-x64-vX.Y.Z.zip`)
+### Windows ARM64 (produces `dist\PhotoComp-windows-arm64-vX.Y.Z.zip`)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\build-linux.ps1
+.\run-build-windows-arm64.bat
+.\run-build-windows-arm64.bat 1.2.0
+```
+
+### Linux x64 from Windows (cross-compile, produces `dist\PhotoComp-linux-x64-vX.Y.Z.zip`)
+
+```powershell
+.\run-build-linux.bat
 ```
 
 ### Linux natively (produces `dist/PhotoComp-linux-x64-vX.Y.Z.zip`)
@@ -137,12 +155,37 @@ dotnet test PhotoComp.Tests/PhotoComp.Tests.csproj
 
 ## Supported Formats
 
+### Viewable images
+
 | Format | Extension |
 |--------|-----------|
 | JPEG | `.jpg`, `.jpeg` |
 | PNG | `.png` |
 
-RAW, HEIC, and other formats are not currently supported.
+### Sidecar formats
+
+When copying or deleting, PhotoComp also handles any matching sidecar file with the same base name:
+
+| Category | Extensions |
+|----------|------------|
+| XMP metadata | `.xmp` |
+| Plain text | `.json`, `.txt` |
+| Canon RAW | `.cr2`, `.cr3` |
+| Nikon RAW | `.nef`, `.nrw` |
+| Sony RAW | `.arw` |
+| Fujifilm RAW | `.raf` |
+| Panasonic / Leica RAW | `.rw2`, `.raw`, `.rwl` |
+| Olympus / OM System RAW | `.orf` |
+| Pentax RAW / DNG | `.pef`, `.dng` |
+| Hasselblad RAW | `.3fr`, `.fff` |
+| Phase One / Mamiya RAW | `.iiq`, `.mef` |
+| Sigma RAW | `.x3f` |
+| Minolta RAW | `.mrw` |
+| Samsung RAW | `.srw` |
+| Kodak RAW | `.kdc`, `.dcr` |
+| Epson RAW | `.erf` |
+
+RAW files are not rendered as viewable images — only JPEG and PNG are displayed in the panels.
 
 ---
 
