@@ -97,5 +97,20 @@
                        Margin="6,3"/>
         </Border>
 
+        <!-- SD prompt overlay (bottom-right): visible only when prompt metadata exists -->
+        <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Background="#CC000000" CornerRadius="4,0,0,0"
+                MaxWidth="420"
+                IsHitTestVisible="False"
+                IsVisible="{Binding PromptText,
+                            Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                ToolTip.Tip="{Binding PromptText}">
+            <TextBlock Text="{Binding PromptText}"
+                       Foreground="White" FontSize="10"
+                       TextWrapping="Wrap" MaxLines="3"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="6,4"/>
+        </Border>
+
     </Grid>
 </UserControl>

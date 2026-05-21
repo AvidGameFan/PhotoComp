@@ -8,4 +8,6 @@ public sealed record ImageItem(
     string FileName,
     DateTime DateTaken,
     int Width,
-    int Height);
+    int Height,
+    string? Prompt = null,
+    string? ExifCaption = null);

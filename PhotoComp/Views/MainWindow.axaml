@@ -107,7 +107,7 @@
                 <TextBlock IsVisible="{Binding LeftPanel, Converter={x:Static ObjectConverters.IsNull}}"
                            Text="Open a folder to begin."
                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Opacity="0.5"/>
+                           Foreground="White"/>
                 <!-- Push left→right button (top-center, only in dual view) -->
                 <Border IsVisible="{Binding IsDualView}"
                         HorizontalAlignment="Center" VerticalAlignment="Top"
@@ -130,7 +130,7 @@
                 <TextBlock IsVisible="{Binding RightPanel, Converter={x:Static ObjectConverters.IsNull}}"
                            Text="Open a folder to begin."
                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                           Opacity="0.5"/>
+                           Foreground="White"/>
                 <!-- Push right→left button (top-center) -->
                 <Border HorizontalAlignment="Center" VerticalAlignment="Top"
                         Background="#CC000000" CornerRadius="4" Margin="0,6,0,0">

@@ -17,6 +17,7 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(HeartGlyph))]
     [NotifyPropertyChangedFor(nameof(PositionLabel))]
     [NotifyPropertyChangedFor(nameof(InfoText))]
+    [NotifyPropertyChangedFor(nameof(PromptText))]
     private int _currentIndex;
 
     public ImagePanelViewModel(
@@ -47,6 +48,13 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     public string InfoText => CurrentImage is null
         ? string.Empty
         : $"{CurrentImage.Width}\u00d7{CurrentImage.Height}  |  {CurrentImage.DateTaken:yyyy-MM-dd HH:mm:ss}";
+
+    /// <summary>
+    /// Text shown in the bottom-right overlay: SD generation prompt when present,
+    /// otherwise a camera EXIF summary (ISO, aperture, shutter speed, focal length).
+    /// Null when neither is available.
+    /// </summary>
+    public string? PromptText => CurrentImage?.Prompt ?? CurrentImage?.ExifCaption;
 
     [RelayCommand]
     public void NavigateNext()
