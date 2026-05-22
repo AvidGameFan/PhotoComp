@@ -29,14 +29,16 @@ public partial class ThumbnailPickerDialog : Window
         Opened += OnDialogOpened;
     }
 
-    public ThumbnailPickerDialog(IReadOnlyList<ImageItem> images, int currentIndex) : this()
+    public ThumbnailPickerDialog(IReadOnlyList<ImageItem> images, int currentIndex,
+                                  IReadOnlySet<string>? selectedPaths = null) : this()
     {
         _items = images
             .Select((img, i) => new ThumbnailItemViewModel(
                 index:          i,
                 filePath:       img.FilePath,
                 fileName:       img.FileName,
-                isCurrentImage: i == currentIndex))
+                isCurrentImage: i == currentIndex,
+                isHearted:      selectedPaths?.Contains(img.FilePath) ?? false))
             .ToList();
 
         TheList.ItemsSource = _items;

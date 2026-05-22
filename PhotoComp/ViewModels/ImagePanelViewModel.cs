@@ -42,6 +42,9 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     public bool IsCurrentHearted =>
         CurrentImage is not null && _selectedPaths.Contains(CurrentImage.FilePath);
 
+    /// <summary>The shared set of hearted file paths (read-only view).</summary>
+    public IReadOnlySet<string> SelectedPaths => _selectedPaths;
+
     public string PositionLabel =>
         _images.Count > 0 ? $"{CurrentIndex + 1} / {_images.Count}" : "—";
 

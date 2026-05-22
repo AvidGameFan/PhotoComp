@@ -69,9 +69,20 @@
                             <StackPanel>
                                 <!-- Image area — dark background shows letterbox bars -->
                                 <Border Height="172" Background="#161616">
-                                    <Image Source="{Binding Thumbnail}"
-                                           Stretch="Uniform"
-                                           Width="188" Height="168"/>
+                                    <Grid>
+                                        <Image Source="{Binding Thumbnail}"
+                                               Stretch="Uniform"
+                                               Width="188" Height="168"/>
+                                        <!-- Heart badge for selected images -->
+                                        <TextBlock Text="&#x2665;"
+                                                   IsVisible="{Binding IsHearted}"
+                                                   Foreground="#FF4444"
+                                                   FontSize="16"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Top"
+                                                   Margin="0,4,6,0"
+                                                   IsHitTestVisible="False"/>
+                                    </Grid>
                                 </Border>
                                 <!-- File name label -->
                                 <TextBlock Text="{Binding FileName}"

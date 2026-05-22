@@ -21,6 +21,9 @@ public sealed class ThumbnailItemViewModel : INotifyPropertyChanged
     /// <summary>True when this item matched the panel's current index at dialog open time.</summary>
     public bool IsCurrentImage { get; }
 
+    /// <summary>True when this image has been hearted (selected for export).</summary>
+    public bool IsHearted { get; }
+
     private Bitmap? _thumbnail;
     public Bitmap? Thumbnail
     {
@@ -32,12 +35,13 @@ public sealed class ThumbnailItemViewModel : INotifyPropertyChanged
         }
     }
 
-    public ThumbnailItemViewModel(int index, string filePath, string fileName, bool isCurrentImage)
+    public ThumbnailItemViewModel(int index, string filePath, string fileName, bool isCurrentImage, bool isHearted = false)
     {
         Index          = index;
         FilePath       = filePath;
         FileName       = fileName;
         IsCurrentImage = isCurrentImage;
+        IsHearted      = isHearted;
     }
 
     /// <summary>

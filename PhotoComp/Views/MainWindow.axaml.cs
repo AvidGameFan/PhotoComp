@@ -111,7 +111,7 @@ public partial class MainWindow : Window
 
     private async Task<int?> ShowPickerDialogAsync(ImagePanelViewModel panel, int currentIndex)
     {
-        var dialog = new ThumbnailPickerDialog(panel.Images, currentIndex);
+        var dialog = new ThumbnailPickerDialog(panel.Images, currentIndex, panel.SelectedPaths);
         await dialog.ShowDialog(this);
         return dialog.SelectedIndex;
     }

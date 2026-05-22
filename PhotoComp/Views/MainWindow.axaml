@@ -15,6 +15,23 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
+    <Window.Styles>
+        <!--
+            Override Fluent theme's default button hover/press styles for the
+            dark-pill overlay buttons (top-center browse/push, etc.).
+            These buttons sit outside ImagePanelView's UserControl scope, so
+            ImagePanelView's identical style doesn't reach them.
+        -->
+        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#40FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="#66FFFFFF"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+    </Window.Styles>
+
     <!-- Root Grid lets us layer the loading overlay on top of the DockPanel -->
     <Grid>
 
