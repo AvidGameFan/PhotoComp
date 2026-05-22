@@ -426,3 +426,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Exclude dist folder (build results from script builds) from Git
+dist/
