@@ -299,4 +299,155 @@ public class ImagePanelViewModelTests
 
         Assert.DoesNotContain(nameof(vm.InfoText), fired);
     }
+
+    // ── PromptText ────────────────────────────────────────────────────
+
+    [Fact]
+    public void PromptText_IsNull_WhenNoImages()
+    {
+        var (vm, _) = Make(0);
+        Assert.Null(vm.PromptText);
+    }
+
+    [Fact]
+    public void PromptText_IsNull_WhenNoPromptAndNoExifCaption()
+    {
+        // Default ImageItem constructor leaves both Prompt and ExifCaption null
+        var (vm, _) = Make(3, 0);
+        Assert.Null(vm.PromptText);
+    }
+
+    [Fact]
+    public void PromptText_ReturnsSdPrompt_WhenSet()
+    {
+        var images = new List<ImageItem>
+        {
+            new("/photos/a.jpg", "a.jpg", DateTime.Now, 1920, 1080,
+                Prompt: "a beautiful landscape, 8k, detailed")
+        }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        Assert.Equal("a beautiful landscape, 8k, detailed", vm.PromptText);
+    }
+
+    [Fact]
+    public void PromptText_ReturnsExifCaption_WhenNoSdPrompt()
+    {
+        var images = new List<ImageItem>
+        {
+            new("/photos/a.jpg", "a.jpg", DateTime.Now, 1920, 1080,
+                Prompt: null, ExifCaption: "Sony ILCE-7M3 · ISO 400 · f/2.8 · 1/250 sec · 50 mm")
+        }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        Assert.Equal("Sony ILCE-7M3 · ISO 400 · f/2.8 · 1/250 sec · 50 mm", vm.PromptText);
+    }
+
+    [Fact]
+    public void PromptText_PrefersPrompt_OverExifCaption()
+    {
+        var images = new List<ImageItem>
+        {
+            new("/photos/a.jpg", "a.jpg", DateTime.Now, 1920, 1080,
+                Prompt: "sd prompt text", ExifCaption: "Canon EOS R5 · ISO 100 · f/4.0 · 1/500 sec")
+        }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        Assert.Equal("sd prompt text", vm.PromptText);
+    }
+
+    [Fact]
+    public void PromptText_UpdatesOnNavigation()
+    {
+        var images = new List<ImageItem>
+        {
+            new("/photos/a.jpg", "a.jpg", DateTime.Now, 1920, 1080),
+            new("/photos/b.jpg", "b.jpg", DateTime.Now, 1920, 1080,
+                Prompt: "next image prompt"),
+        }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        Assert.Null(vm.PromptText);
+        vm.NavigateNextCommand.Execute(null);
+        Assert.Equal("next image prompt", vm.PromptText);
+    }
+
+    [Fact]
+    public void Navigation_FiresPropertyChanged_ForPromptText()
+    {
+        var (vm, _) = Make(5, 0);
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.NavigateNextCommand.Execute(null);
+
+        Assert.Contains(nameof(vm.PromptText), fired);
+    }
+
+    // ── ShowPickerCommand ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task ShowPickerCommand_DoesNothing_WhenShowPickerAsyncIsNull()
+    {
+        var (vm, _) = Make(5, 2);
+        // ShowPickerAsync intentionally not set
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(2, vm.CurrentIndex); // unchanged
+    }
+
+    [Fact]
+    public async Task ShowPickerCommand_DoesNothing_WhenImagesEmpty()
+    {
+        var (vm, _) = Make(0);
+        int callCount = 0;
+        vm.ShowPickerAsync = _ => { callCount++; return Task.FromResult<int?>(0); };
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(0, callCount);
+    }
+
+    [Fact]
+    public async Task ShowPickerCommand_PassesCurrentIndex_ToCallback()
+    {
+        var (vm, _) = Make(5, 3);
+        int? receivedIndex = null;
+        vm.ShowPickerAsync = idx => { receivedIndex = idx; return Task.FromResult<int?>(null); };
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(3, receivedIndex);
+    }
+
+    [Fact]
+    public async Task ShowPickerCommand_UpdatesCurrentIndex_WhenValueReturned()
+    {
+        var (vm, _) = Make(5, 0);
+        vm.ShowPickerAsync = _ => Task.FromResult<int?>(4);
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(4, vm.CurrentIndex);
+    }
+
+    [Fact]
+    public async Task ShowPickerCommand_DoesNotUpdateCurrentIndex_WhenCallbackReturnsNull()
+    {
+        var (vm, _) = Make(5, 2);
+        vm.ShowPickerAsync = _ => Task.FromResult<int?>(null);
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(2, vm.CurrentIndex);
+    }
+
+    [Fact]
+    public async Task ShowPickerCommand_ClampsReturnedValue_ToValidRange()
+    {
+        var (vm, _) = Make(5, 0);
+        vm.ShowPickerAsync = _ => Task.FromResult<int?>(99); // out of range
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(4, vm.CurrentIndex); // clamped to last index
+    }
+
+    [Fact]
+    public async Task ShowPickerCommand_ClampsNegativeReturnedValue()
+    {
+        var (vm, _) = Make(5, 3);
+        vm.ShowPickerAsync = _ => Task.FromResult<int?>(-5); // negative
+        await vm.ShowPickerCommand.ExecuteAsync(null);
+        Assert.Equal(0, vm.CurrentIndex); // clamped to 0
+    }
 }

@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using PhotoComp.ViewModels;
 
@@ -91,6 +92,21 @@ public partial class MainWindow : Window
     {
         if (panel is null) return;
         panel.ShowPickerAsync = idx => ShowPickerDialogAsync(panel, idx);
+        panel.CopyImageAsync  = CopyImageToClipboardAsync;
+    }
+
+    private async Task CopyImageToClipboardAsync(string filePath)
+    {
+        if (Clipboard is null) return;
+        try
+        {
+            var bmp      = new Bitmap(filePath);
+            var item     = DataTransferItem.Create(DataFormat.Bitmap, bmp);
+            var transfer = new DataTransfer();
+            transfer.Add(item);
+            await Clipboard.SetDataAsync(transfer);
+        }
+        catch { }
     }
 
     private async Task<int?> ShowPickerDialogAsync(ImagePanelViewModel panel, int currentIndex)

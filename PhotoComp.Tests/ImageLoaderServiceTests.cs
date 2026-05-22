@@ -138,4 +138,43 @@ public class ImageLoaderServiceTests : IDisposable
         var ex = Record.Exception(() => ImageLoaderService.LoadImages(_tempDir));
         Assert.Null(ex);
     }
+
+    // ── ExifCaption ───────────────────────────────────────────────────
+
+    [Fact]
+    public void LoadImages_ExifCaption_IsNull_ForFakeJpeg()
+    {
+        // A minimal JFIF stub has no EXIF sub-IFD, so BuildExifCaption returns null.
+        WriteFakeJpeg("noexif.jpg", DateTime.Now);
+        var items = ImageLoaderService.LoadImages(_tempDir);
+        Assert.Single(items);
+        Assert.Null(items[0].ExifCaption);
+    }
+
+    [Fact]
+    public void LoadImages_Prompt_IsNull_ForFakeJpeg()
+    {
+        WriteFakeJpeg("noprompt.jpg", DateTime.Now);
+        var items = ImageLoaderService.LoadImages(_tempDir);
+        Assert.Single(items);
+        Assert.Null(items[0].Prompt);
+    }
+
+    [Fact]
+    public void LoadImages_ExifCaption_IsNull_ForCorruptFile()
+    {
+        WriteEmptyFile("corrupt.jpg");
+        var items = ImageLoaderService.LoadImages(_tempDir);
+        Assert.Single(items);
+        Assert.Null(items[0].ExifCaption);
+    }
+
+    [Fact]
+    public void LoadImages_Prompt_IsNull_ForCorruptFile()
+    {
+        WriteEmptyFile("corrupt.jpg");
+        var items = ImageLoaderService.LoadImages(_tempDir);
+        Assert.Single(items);
+        Assert.Null(items[0].Prompt);
+    }
 }

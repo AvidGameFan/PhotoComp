@@ -108,7 +108,9 @@ Each panel shows a small overlay in the bottom-left corner with the image's pixe
 ```
 3024×4032  |  2024-06-15 14:32:07
 ```
+
 The bottom-right corner displays camera EXIF info for photos, or embedded prompt info for AI generated images.
+
 ---
 
 ## Building

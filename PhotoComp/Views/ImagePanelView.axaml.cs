@@ -217,6 +217,10 @@ public partial class ImagePanelView : UserControl
                 vm.DeleteCurrentCommand.Execute(null);
                 e.Handled = true;
                 break;
+            case Key.C when e.KeyModifiers == KeyModifiers.Control:
+                vm.CopyToClipboardCommand.Execute(null);
+                e.Handled = true;
+                break;
         }
     }
 }

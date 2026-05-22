@@ -41,6 +41,14 @@
 
     <Grid>
 
+        <Grid.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Copy Image to Clipboard"
+                          Command="{Binding CopyToClipboardCommand}"
+                          InputGesture="Ctrl+C"/>
+            </ContextMenu>
+        </Grid.ContextMenu>
+
         <!-- Dark background + clipped image area -->
         <Border Background="#1A1A1A" ClipToBounds="True">
             <Image x:Name="MainImage"

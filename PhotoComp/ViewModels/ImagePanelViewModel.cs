@@ -21,6 +21,7 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(PositionLabel))]
     [NotifyPropertyChangedFor(nameof(InfoText))]
     [NotifyPropertyChangedFor(nameof(PromptText))]
+    [NotifyCanExecuteChangedFor(nameof(CopyToClipboardCommand))]
     private int _currentIndex;
 
     public ImagePanelViewModel(
@@ -115,6 +116,21 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
         if (chosen.HasValue)
             CurrentIndex = Math.Clamp(chosen.Value, 0, _images.Count - 1);
     }
+
+    /// <summary>
+    /// Injected by the view layer to copy the current image to the system clipboard.
+    /// Receives the image file path; null-safe (no-op when not set).
+    /// </summary>
+    public Func<string, Task>? CopyImageAsync { get; set; }
+
+    [RelayCommand(CanExecute = nameof(CanCopyToClipboard))]
+    private async Task CopyToClipboard()
+    {
+        if (CurrentImage is null || CopyImageAsync is null) return;
+        await CopyImageAsync(CurrentImage.FilePath);
+    }
+
+    private bool CanCopyToClipboard() => CurrentImage is not null;
 
     /// <summary>
     /// Raised when the heart is toggled so MainWindowViewModel can refresh SelectedCount.
