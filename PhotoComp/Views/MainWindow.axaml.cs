@@ -45,6 +45,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (e.PropertyName is nameof(MainWindowViewModel.LeftPanel)
+                            or nameof(MainWindowViewModel.RightPanel))
+        {
+            WirePanelPicker(vm.LeftPanel);
+            WirePanelPicker(vm.RightPanel);
+        }
+
         if (e.PropertyName != nameof(MainWindowViewModel.IsSingleView)) return;
 
         // Column indices: 0=left, 1=divider, 2=right
@@ -78,5 +85,18 @@ public partial class MainWindow : Window
         var dialog = new ConfirmDialog(title, message);
         await dialog.ShowDialog(this);
         return dialog.Result;
+    }
+
+    private void WirePanelPicker(ImagePanelViewModel? panel)
+    {
+        if (panel is null) return;
+        panel.ShowPickerAsync = idx => ShowPickerDialogAsync(panel, idx);
+    }
+
+    private async Task<int?> ShowPickerDialogAsync(ImagePanelViewModel panel, int currentIndex)
+    {
+        var dialog = new ThumbnailPickerDialog(panel.Images, currentIndex);
+        await dialog.ShowDialog(this);
+        return dialog.SelectedIndex;
     }
 }

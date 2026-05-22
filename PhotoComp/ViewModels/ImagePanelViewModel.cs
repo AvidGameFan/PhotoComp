@@ -11,6 +11,9 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
 
     public ZoomState SharedZoom { get; }
 
+    /// <summary>The full image list this panel is browsing.</summary>
+    public IReadOnlyList<ImageItem> Images => _images;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CurrentImage))]
     [NotifyPropertyChangedFor(nameof(IsCurrentHearted))]
@@ -96,6 +99,21 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     {
         if (CurrentImage is null) return;
         await (RequestDeleteAsync?.Invoke(CurrentImage) ?? Task.CompletedTask);
+    }
+
+    /// <summary>
+    /// Opens the thumbnail picker dialog. Injected by the View so the VM stays testable.
+    /// Receives the current index; returns the chosen index, or null when cancelled.
+    /// </summary>
+    public Func<int, Task<int?>>? ShowPickerAsync { get; set; }
+
+    [RelayCommand]
+    private async Task ShowPicker()
+    {
+        if (ShowPickerAsync is null || _images.Count == 0) return;
+        var chosen = await ShowPickerAsync(CurrentIndex);
+        if (chosen.HasValue)
+            CurrentIndex = Math.Clamp(chosen.Value, 0, _images.Count - 1);
     }
 
     /// <summary>

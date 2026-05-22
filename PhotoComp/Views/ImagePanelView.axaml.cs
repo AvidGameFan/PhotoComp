@@ -136,7 +136,30 @@ public partial class ImagePanelView : UserControl
 
         if (e.ClickCount == 2)
         {
-            _attachedZoom?.Reset();
+            if (_attachedZoom is not null && _attachedZoom.Scale == 1.0)
+            {
+                // Already at 100% fit → zoom to pixel-perfect (1 image px = 1 screen px).
+                var image = PanelViewModel?.CurrentImage;
+                if (image is not null && image.Width > 0 && image.Height > 0)
+                {
+                    // fitScale: how many DIPs one image pixel occupies at Scale=1.0 (Stretch="Uniform")
+                    var fitScale = Math.Min(Bounds.Width / image.Width,
+                                           Bounds.Height / image.Height);
+                    // renderScaling: physical pixels per DIP (e.g. 1.5 at 150% DPI)
+                    var renderScaling = TopLevel.GetTopLevel(this)?.RenderScaling ?? 1.0;
+                    var pixelScale = Math.Clamp(1.0 / (fitScale * renderScaling), MinScale, MaxScale);
+
+                    // Zoom towards the click point so it stays under the cursor.
+                    var pos = e.GetPosition(this);
+                    _attachedZoom.OffsetX = pos.X * (1.0 - pixelScale); // oldOffsetX=0, oldScale=1
+                    _attachedZoom.OffsetY = pos.Y * (1.0 - pixelScale);
+                    _attachedZoom.Scale   = pixelScale;
+                }
+            }
+            else
+            {
+                _attachedZoom?.Reset();
+            }
             e.Handled = true;
             return;
         }

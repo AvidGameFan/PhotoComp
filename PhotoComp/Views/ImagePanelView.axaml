@@ -79,7 +79,7 @@
             </Button>
         </Border>
 
-        <!-- Delete button (top-left) — subtle red foreground signals destructive action -->
+        <!-- Delete button (top-left) -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Top"
                 Background="#CC000000" CornerRadius="4" Margin="8,6,0,0">
             <Button Command="{Binding DeleteCurrentCommand}"

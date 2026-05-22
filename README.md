@@ -1,6 +1,6 @@
 # PhotoComp
 
-A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favourites with a heart, then copy them — along with any sidecar files — to a destination folder. Delete unwanted images directly from the app, including their RAW originals and metadata sidecars.
+A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favorites with a heart, then copy them — along with any sidecar files — to a destination folder. Delete unwanted images directly from the app, including their RAW originals and metadata sidecars.
 
 ---
 
@@ -16,6 +16,7 @@ A desktop photo comparison tool for Windows and Linux. Open a folder of images a
 - **Delete with sidecars** — permanently deletes the current image and any accompanying sidecar files after confirmation
 - **Single/dual view toggle** — switch between side-by-side and single-panel view from the toolbar
 - **Busy indicator** — a loading overlay and wait cursor appear while a large folder is being scanned
+- **Thumbnail Selector Dialog** — view all images as thumbnails for easy selection
 
 ---
 
@@ -74,14 +75,14 @@ Click **📁 Open Folder** in the toolbar and choose a folder containing JPEG or
 | Mouse wheel or touchpad pinch | Zoom in / out (both panels, 0.1× – 10×) |
 | Touchscreen two-finger pinch | Zoom in / out on touch displays |
 | Left-drag | Pan the image (both panels move together) |
-| Double-click | Reset zoom and pan to defaults |
-| **⊙ Reset Zoom** button | Same as double-click |
+| Double-click | Reset zoom and pan to defaults, or zoom to pixel-level (toggle)|
+| **⊙ Reset Zoom** button |  Reset zoom to 100% |
 
 The current zoom level is shown in the toolbar as a percentage.
 
 ### Selecting images
 
-Click the **♡** heart icon in the top-right corner of a panel to mark the current image as a favourite. A filled red **♥** indicates it is selected. Click again to deselect. The toolbar shows the running count: **💾 Copy Selected (N)**.
+Click the **♡** heart icon in the top-right corner of a panel to mark the current image as a favorite. A filled red **♥** indicates it is selected. Click again to deselect. The toolbar shows the running count: **💾 Copy Selected (N)**.
 
 ### Copying selected images
 
@@ -107,7 +108,7 @@ Each panel shows a small overlay in the bottom-left corner with the image's pixe
 ```
 3024×4032  |  2024-06-15 14:32:07
 ```
-
+The bottom-right corner displays camera EXIF info for photos, or embedded prompt info for AI generated images.
 ---
 
 ## Building

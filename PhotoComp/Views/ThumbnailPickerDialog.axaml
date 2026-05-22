@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PhotoComp.ViewModels"
+        x:Class="PhotoComp.Views.ThumbnailPickerDialog"
+        Title="Browse Images"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#1A1A1A">
+
+    <Window.Styles>
+        <!-- Base thumbnail cell style -->
+        <Style Selector="Border.thumb-cell">
+            <Setter Property="Background"       Value="#2A2A2A"/>
+            <Setter Property="BorderBrush"      Value="#444444"/>
+            <Setter Property="BorderThickness"  Value="2"/>
+        </Style>
+        <!-- Hover feedback -->
+        <Style Selector="Border.thumb-cell:pointerover">
+            <Setter Property="Background"   Value="#383838"/>
+            <Setter Property="BorderBrush"  Value="#888888"/>
+        </Style>
+        <!-- Highlights the panel's currently-shown image -->
+        <Style Selector="Border.thumb-cell.current">
+            <Setter Property="BorderBrush" Value="#4A9FC7"/>
+        </Style>
+    </Window.Styles>
+
+    <DockPanel>
+
+        <!-- ── Header bar ───────────────────────────────────────── -->
+        <Border DockPanel.Dock="Top"
+                Background="#252525"
+                BorderBrush="#444444" BorderThickness="0,0,0,1"
+                Padding="14,9">
+            <DockPanel>
+                <Button DockPanel.Dock="Right"
+                        x:Name="CloseButton"
+                        Content="✕  Close"
+                        IsCancel="True"
+                        Margin="12,0,0,0"/>
+                <TextBlock x:Name="HeaderText"
+                           VerticalAlignment="Center"
+                           Foreground="#DDDDDD"
+                           FontSize="14"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ── Scrollable thumbnail grid ────────────────────────── -->
+        <!-- Scrollable thumbnail grid -->
+        <ScrollViewer x:Name="TheScroller"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="TheList" Margin="8">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ThumbnailItemViewModel">
+                        <Border Classes="thumb-cell"
+                                Classes.current="{Binding IsCurrentImage}"
+                                Width="196" Height="228"
+                                CornerRadius="4"
+                                Margin="4"
+                                Cursor="Hand"
+                                ClipToBounds="True">
+                            <StackPanel>
+                                <!-- Image area — dark background shows letterbox bars -->
+                                <Border Height="172" Background="#161616">
+                                    <Image Source="{Binding Thumbnail}"
+                                           Stretch="Uniform"
+                                           Width="188" Height="168"/>
+                                </Border>
+                                <!-- File name label -->
+                                <TextBlock Text="{Binding FileName}"
+                                           Foreground="#CCCCCC"
+                                           FontSize="10"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextAlignment="Center"
+                                           Margin="4,5,4,4"/>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+    </DockPanel>
+</Window>

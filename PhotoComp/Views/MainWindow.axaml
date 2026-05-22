@@ -108,14 +108,20 @@
                            Text="Open a folder to begin."
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Foreground="White"/>
-                <!-- Push left→right button (top-center, only in dual view) -->
-                <Border IsVisible="{Binding IsDualView}"
-                        HorizontalAlignment="Center" VerticalAlignment="Top"
+                <!-- Browse + push-right buttons (top-center); push arrow hidden in single view -->
+                <Border HorizontalAlignment="Center" VerticalAlignment="Top"
                         Background="#CC000000" CornerRadius="4" Margin="0,6,0,0">
-                    <Button Command="{Binding PushLeftToRightCommand}"
-                            Background="Transparent" BorderThickness="0"
-                            Foreground="White" Padding="10,4" FontSize="14"
-                            ToolTip.Tip="Show this image in the right panel">→</Button>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Command="{Binding LeftPanel.ShowPickerCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="White" Padding="8,4" FontSize="15"
+                                ToolTip.Tip="Browse all images (thumbnail picker)">⊞</Button>
+                        <Button IsVisible="{Binding IsDualView}"
+                                Command="{Binding PushLeftToRightCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="White" Padding="10,4" FontSize="14"
+                                ToolTip.Tip="Show this image in the right panel">→</Button>
+                    </StackPanel>
                 </Border>
             </Panel>
 
@@ -131,13 +137,19 @@
                            Text="Open a folder to begin."
                            HorizontalAlignment="Center" VerticalAlignment="Center"
                            Foreground="White"/>
-                <!-- Push right→left button (top-center) -->
+                <!-- Push-left + browse buttons (top-center) -->
                 <Border HorizontalAlignment="Center" VerticalAlignment="Top"
                         Background="#CC000000" CornerRadius="4" Margin="0,6,0,0">
-                    <Button Command="{Binding PushRightToLeftCommand}"
-                            Background="Transparent" BorderThickness="0"
-                            Foreground="White" Padding="10,4" FontSize="14"
-                            ToolTip.Tip="Show this image in the left panel">←</Button>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Command="{Binding PushRightToLeftCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="White" Padding="10,4" FontSize="14"
+                                ToolTip.Tip="Show this image in the left panel">←</Button>
+                        <Button Command="{Binding RightPanel.ShowPickerCommand}"
+                                Background="Transparent" BorderThickness="0"
+                                Foreground="White" Padding="8,4" FontSize="15"
+                                ToolTip.Tip="Browse all images (thumbnail picker)">⊞</Button>
+                    </StackPanel>
                 </Border>
             </Panel>
 
