@@ -24,6 +24,21 @@ public sealed class StringToBitmapConverter : IValueConverter
         capacity: 50,
         onEvict: null); // Don't dispose - let GC handle it to avoid ObjectDisposedException during rendering
 
+    /// <summary>
+    /// Returns a cached bitmap for <paramref name="path"/> without promoting it in the LRU
+    /// order and without loading from disk. Returns null if the path is not cached.
+    /// </summary>
+    public static bool TryGetCached(string path, out Bitmap? bitmap)
+    {
+        if (Cache.TryGet(path, out var cached))
+        {
+            bitmap = cached;
+            return true;
+        }
+        bitmap = null;
+        return false;
+    }
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not string path || string.IsNullOrEmpty(path))
@@ -43,6 +58,12 @@ public sealed class StringToBitmapConverter : IValueConverter
             return null;
         }
     }
+
+    /// <summary>
+    /// Drops all cached bitmaps. Call when loading a new folder so memory from the
+    /// previous folder's images can be reclaimed by the GC.
+    /// </summary>
+    public static void ClearCache() => Cache.Clear();
 
     public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

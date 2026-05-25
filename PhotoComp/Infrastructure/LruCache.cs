@@ -64,4 +64,17 @@ public sealed class LruCache<TKey, TValue> where TKey : notnull
         var node = _list.AddFirst((key, value));
         _map[key] = node;
     }
+
+    /// <summary>
+    /// Removes all entries, invoking <see cref="_onEvict"/> for each.
+    /// </summary>
+    public void Clear()
+    {
+        if (_onEvict is not null)
+            foreach (var node in _list)
+                _onEvict(node.Value);
+
+        _list.Clear();
+        _map.Clear();
+    }
 }

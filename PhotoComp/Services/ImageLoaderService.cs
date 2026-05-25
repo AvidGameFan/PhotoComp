@@ -13,12 +13,17 @@ public static class ImageLoaderService
 
     /// <summary>
     /// Scans <paramref name="folderPath"/> for supported images, reads EXIF metadata
-    /// with up to <paramref name="maxDegreeOfParallelism"/> files processed concurrently,
-    /// and returns a list sorted by date taken (ascending).
+    /// concurrently, and returns a list sorted by date taken (ascending).
+    ///
+    /// DOP defaults to 2× logical CPU count: metadata reading is I/O-bound so more
+    /// concurrent operations keep the disk pipeline full without excess context switching.
     /// </summary>
     public static async Task<IReadOnlyList<ImageItem>> LoadImagesAsync(
-        string folderPath, int maxDegreeOfParallelism = 3)
+        string folderPath, int maxDegreeOfParallelism = -1)
     {
+        if (maxDegreeOfParallelism <= 0)
+            maxDegreeOfParallelism = Environment.ProcessorCount * 2;
+
         var files = System.IO.Directory
             .EnumerateFiles(folderPath)
             .Where(f => SupportedExtensions.Contains(
@@ -30,18 +35,19 @@ public static class ImageLoaderService
         await Parallel.ForEachAsync(
             Enumerable.Range(0, files.Length),
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            (i, _) =>
+            async (i, ct) =>
             {
-            var (dateTaken, width, height, prompt, exifCaption) = ReadMetadata(files[i]);
+                var (dateTaken, width, height, prompt, exifCaption) =
+                    await ReadMetadataAsync(files[i]).ConfigureAwait(false);
+
                 items[i] = new ImageItem(
-                    FilePath: files[i],
-                    FileName: System.IO.Path.GetFileName(files[i]),
-                    DateTaken: dateTaken,
-                    Width: width,
-                    Height: height,
-                    Prompt: prompt,
+                    FilePath:    files[i],
+                    FileName:    System.IO.Path.GetFileName(files[i]),
+                    DateTaken:   dateTaken,
+                    Width:       width,
+                    Height:      height,
+                    Prompt:      prompt,
                     ExifCaption: exifCaption);
-                return ValueTask.CompletedTask;
             });
 
         return items.OrderBy(i => i.DateTaken).ToList().AsReadOnly();
@@ -51,6 +57,21 @@ public static class ImageLoaderService
     /// <remarks>Synchronous convenience wrapper used by unit tests.</remarks>
     public static IReadOnlyList<ImageItem> LoadImages(string folderPath)
         => LoadImagesAsync(folderPath).GetAwaiter().GetResult();
+
+    private static async Task<(DateTime dateTaken, int width, int height, string? prompt, string? exifCaption)>
+        ReadMetadataAsync(string filePath)
+    {
+        // ImageMetadataReader has no async API — offload it so the calling thread is freed
+        // during the synchronous disk read rather than blocking a pool thread.
+        var (dateTaken, width, height, prompt, exifCaption) =
+            await Task.Run(() => ReadMetadata(filePath)).ConfigureAwait(false);
+
+        // If the brute-force PNG fallback is needed, run it with true async I/O.
+        if (prompt == null)
+            prompt = await ExtractPromptFromPngBytesAsync(filePath).ConfigureAwait(false);
+
+        return (dateTaken, width, height, prompt, exifCaption);
+    }
 
     private static (DateTime dateTaken, int width, int height, string? prompt, string? exifCaption) ReadMetadata(string filePath)
     {
@@ -133,8 +154,8 @@ public static class ImageLoaderService
             }
         }
 
-        // Brute-force fallback: scan raw PNG bytes for tEXt/iTXt chunks.
-        // Used when MetadataExtractor does not surface the chunk data (e.g. Easy Diffusion files).
+        // Brute-force PNG chunk fallback is handled by ReadMetadataAsync to allow true async I/O.
+        // When called synchronously (unit tests via LoadImages), run it inline.
         prompt ??= ExtractPromptFromPngBytes(filePath);
 
         return (dateTaken, width, height, prompt, exifCaption);
@@ -219,39 +240,168 @@ public static class ImageLoaderService
         return null;
     }
 
-    // ── Brute-force PNG byte scanner ─────────────────────────────────────────────────────────
+    // ── Structured PNG chunk walker ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Fallback prompt extractor: reads the raw PNG bytes and searches for known tEXt / iTXt
-    /// chunk keywords directly — the same approach used by Form1.cs for seeds.
-    /// This handles files where MetadataExtractor does not surface the tEXt data.
-    /// </summary>
+    /// <summary>Async version used by <see cref="ReadMetadataAsync"/> — uses true async I/O
+    /// so the thread pool thread is released during each file read.</summary>
+    private static async Task<string?> ExtractPromptFromPngBytesAsync(string filePath)
+    {
+        if (!filePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        try
+        {
+            await using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read,
+                FileShare.Read, bufferSize: 4096, useAsync: true);
+
+            var sig = new byte[8];
+            if (await fs.ReadAsync(sig).ConfigureAwait(false) < 8) return null;
+            if (sig[0] != 0x89 || sig[1] != 0x50 || sig[2] != 0x4E || sig[3] != 0x47) return null;
+
+            var header = new byte[8];
+            while (true)
+            {
+                if (await fs.ReadAsync(header).ConfigureAwait(false) < 8) break;
+
+                int chunkLen = (header[0] << 24) | (header[1] << 16)
+                             | (header[2] << 8)  |  header[3];
+                string chunkType = System.Text.Encoding.ASCII.GetString(header, 4, 4);
+
+                if (chunkType == "IDAT" || chunkType == "IEND") break;
+
+                if ((chunkType == "tEXt" || chunkType == "iTXt") && chunkLen is > 0 and < 2_000_000)
+                {
+                    var chunkData = new byte[chunkLen];
+                    if (await fs.ReadAsync(chunkData).ConfigureAwait(false) < chunkLen) break;
+
+                    var result = chunkType == "tEXt"
+                        ? ParseTExtChunk(chunkData)
+                        : ParseITxtChunk(chunkData);
+
+                    if (result.HasValue)
+                    {
+                        var (keyword, value) = result.Value;
+                        var resolved = ResolveSdPromptValue(keyword, value);
+                        if (!string.IsNullOrWhiteSpace(resolved))
+                            return resolved!.Trim();
+                    }
+
+                    fs.Seek(4, SeekOrigin.Current); // skip CRC
+                }
+                else
+                {
+                    fs.Seek(chunkLen + 4, SeekOrigin.Current); // skip data + CRC
+                }
+            }
+        }
+        catch { /* unreadable file */ }
+
+        return null;
+    }
+
+    /// <summary>Synchronous fallback used by the <see cref="LoadImages"/> unit-test wrapper.</summary>
     private static string? ExtractPromptFromPngBytes(string filePath)
     {
         if (!filePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        byte[] data;
-        try { data = File.ReadAllBytes(filePath); }
-        catch { return null; }
-
-        foreach (var keyword in SdPromptKeywords)
+        try
         {
-            // Try tEXt (Latin-1) chunk
-            var value = ReadPngTExtChunk(data, "tEXt", keyword, System.Text.Encoding.Latin1);
-            // Try iTXt (UTF-8) chunk — same keyword, different chunk type and layout
-            value ??= ReadPngITxtChunk(data, keyword);
+            using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read,
+                                          FileShare.Read, bufferSize: 4096);
 
-            if (!string.IsNullOrWhiteSpace(value))
+            // Validate the 8-byte PNG signature.
+            Span<byte> sig = stackalloc byte[8];
+            if (fs.Read(sig) < 8) return null;
+            if (sig[0] != 0x89 || sig[1] != 0x50 || sig[2] != 0x4E || sig[3] != 0x47) return null;
+
+            Span<byte> header = stackalloc byte[8]; // 4-byte length + 4-byte type
+
+            while (true)
             {
-                if (string.Equals(keyword, "sd-metadata", StringComparison.OrdinalIgnoreCase))
-                    value = ExtractJsonStringField(value, "prompt");
+                if (fs.Read(header) < 8) break;
 
-                if (!string.IsNullOrWhiteSpace(value))
-                    return value!.Trim();
+                int chunkLen = (header[0] << 24) | (header[1] << 16)
+                             | (header[2] << 8)  |  header[3];
+                string chunkType = System.Text.Encoding.ASCII.GetString(header[4..8]);
+
+                // Stop before reading any pixel data — text chunks always precede IDAT.
+                if (chunkType == "IDAT" || chunkType == "IEND") break;
+
+                if ((chunkType == "tEXt" || chunkType == "iTXt") && chunkLen is > 0 and < 2_000_000)
+                {
+                    var chunkData = new byte[chunkLen];
+                    if (fs.Read(chunkData) < chunkLen) break;
+
+                    var result = chunkType == "tEXt"
+                        ? ParseTExtChunk(chunkData)
+                        : ParseITxtChunk(chunkData);
+
+                    if (result.HasValue)
+                    {
+                        var (keyword, value) = result.Value;
+                        var resolved = ResolveSdPromptValue(keyword, value);
+                        if (!string.IsNullOrWhiteSpace(resolved))
+                            return resolved!.Trim();
+                    }
+
+                    // Skip only the 4-byte CRC (data already consumed above).
+                    fs.Seek(4, SeekOrigin.Current);
+                }
+                else
+                {
+                    // Skip data + 4-byte CRC without reading them.
+                    fs.Seek(chunkLen + 4, SeekOrigin.Current);
+                }
             }
         }
+        catch { /* unreadable file — fall through */ }
+
         return null;
+    }
+
+    /// <summary>
+    /// Parses a tEXt chunk's data bytes into (keyword, Latin-1 value).
+    /// tEXt layout: keyword bytes + \0 + value bytes (Latin-1, no null terminator).
+    /// </summary>
+    private static (string keyword, string value)? ParseTExtChunk(byte[] data)
+    {
+        int nullPos = Array.IndexOf(data, (byte)0);
+        if (nullPos < 1) return null;
+
+        var keyword = System.Text.Encoding.ASCII.GetString(data, 0, nullPos);
+        var value   = System.Text.Encoding.Latin1.GetString(data, nullPos + 1, data.Length - nullPos - 1);
+        return (keyword, value);
+    }
+
+    /// <summary>
+    /// Parses an iTXt chunk's data bytes into (keyword, UTF-8 value).
+    /// iTXt layout: keyword\0 + compression_flag(1) + compression_method(1)
+    ///              + language_tag\0 + translated_keyword\0 + UTF-8 text.
+    /// Only uncompressed chunks (compression_flag == 0) are handled.
+    /// </summary>
+    private static (string keyword, string value)? ParseITxtChunk(byte[] data)
+    {
+        int nullPos = Array.IndexOf(data, (byte)0);
+        if (nullPos < 1 || nullPos + 2 >= data.Length) return null;
+
+        var keyword = System.Text.Encoding.ASCII.GetString(data, 0, nullPos);
+
+        // compression_flag must be 0 for uncompressed text.
+        if (data[nullPos + 1] != 0) return null;
+
+        // Skip compression_method byte, then scan past language_tag\0 and translated_keyword\0.
+        int pos = nullPos + 3; // points to start of language_tag
+        int nullsNeeded = 2;
+        while (pos < data.Length && nullsNeeded > 0)
+        {
+            if (data[pos] == 0) nullsNeeded--;
+            pos++;
+        }
+        if (nullsNeeded > 0) return null;
+
+        var value = System.Text.Encoding.UTF8.GetString(data, pos, data.Length - pos);
+        return (keyword, value);
     }
 
     /// <summary>

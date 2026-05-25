@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PhotoComp.Converters;
 using PhotoComp.Models;
 using PhotoComp.Services;
 
@@ -45,6 +46,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(folder)) return;
 
         IsLoading = true;
+        StringToBitmapConverter.ClearCache();
+        ThumbnailItemViewModel.ClearCache();
         try
         {
             var loaded = await ImageLoaderService.LoadImagesAsync(folder);
