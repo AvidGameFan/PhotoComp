@@ -107,6 +107,20 @@ public partial class MainWindow : Window
         if (panel is null) return;
         panel.ShowPickerAsync = idx => ShowPickerDialogAsync(panel, idx);
         panel.CopyImageAsync  = CopyImageToClipboardAsync;
+        panel.CopyTextAsync   = CopyTextToClipboardAsync;
+    }
+
+    private async Task CopyTextToClipboardAsync(string text)
+    {
+        if (Clipboard is null) return;
+        try
+        {
+            var item     = DataTransferItem.Create(DataFormat.Text, text);
+            var transfer = new DataTransfer();
+            transfer.Add(item);
+            await Clipboard.SetDataAsync(transfer);
+        }
+        catch { }
     }
 
     private async Task CopyImageToClipboardAsync(string filePath)

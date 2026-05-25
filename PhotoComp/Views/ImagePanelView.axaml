@@ -109,10 +109,15 @@
         <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"
                 Background="#CC000000" CornerRadius="4,0,0,0"
                 MaxWidth="420"
-                IsHitTestVisible="False"
                 IsVisible="{Binding PromptText,
                             Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                 ToolTip.Tip="{Binding PromptText}">
+            <Border.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Copy Prompt"
+                              Command="{Binding CopyPromptCommand}"/>
+                </ContextMenu>
+            </Border.ContextMenu>
             <TextBlock Text="{Binding PromptText}"
                        Foreground="White" FontSize="10"
                        TextWrapping="Wrap" MaxLines="3"

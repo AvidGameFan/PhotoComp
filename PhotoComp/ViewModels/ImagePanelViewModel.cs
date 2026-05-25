@@ -22,6 +22,7 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(InfoText))]
     [NotifyPropertyChangedFor(nameof(PromptText))]
     [NotifyCanExecuteChangedFor(nameof(CopyToClipboardCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CopyPromptCommand))]
     private int _currentIndex;
 
     public ImagePanelViewModel(
@@ -134,6 +135,21 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     }
 
     private bool CanCopyToClipboard() => CurrentImage is not null;
+
+    /// <summary>
+    /// Injected by the view layer to copy text to the system clipboard.
+    /// Receives the text string; null-safe (no-op when not set).
+    /// </summary>
+    public Func<string, Task>? CopyTextAsync { get; set; }
+
+    [RelayCommand(CanExecute = nameof(CanCopyPrompt))]
+    private async Task CopyPrompt()
+    {
+        if (PromptText is null || CopyTextAsync is null) return;
+        await CopyTextAsync(PromptText);
+    }
+
+    private bool CanCopyPrompt() => !string.IsNullOrEmpty(PromptText);
 
     /// <summary>
     /// Raised when the heart is toggled so MainWindowViewModel can refresh SelectedCount.
