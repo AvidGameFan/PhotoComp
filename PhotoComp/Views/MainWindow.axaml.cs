@@ -27,6 +27,45 @@ public partial class MainWindow : Window
         RightPanelContainer.AddHandler(PointerPressedEvent,
             (_, _) => { if (DataContext is MainWindowViewModel vm) vm.SetActivePanel(vm.RightPanel); },
             RoutingStrategies.Bubble);
+        AddHandler(DragDrop.DragOverEvent, OnDragOver);
+        AddHandler(DragDrop.DropEvent,     OnDrop);
+    }
+
+    private static void OnDragOver(object? sender, DragEventArgs e)
+    {
+        e.DragEffects = e.DataTransfer.Formats.Contains(DataFormat.File)
+            ? DragDropEffects.Copy
+            : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void OnDrop(object? sender, DragEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+
+        var storageItem = e.DataTransfer.Items
+            .Select(i => i.TryGetRaw(DataFormat.File) as IStorageItem)
+            .FirstOrDefault(i => i is not null);
+        if (storageItem is null) return;
+
+        var path = storageItem.TryGetLocalPath();
+        if (string.IsNullOrEmpty(path)) return;
+
+        string folder;
+        string? initialFile = null;
+
+        if (Directory.Exists(path))
+        {
+            folder = path;
+        }
+        else if (File.Exists(path))
+        {
+            folder      = Path.GetDirectoryName(path)!;
+            initialFile = path;
+        }
+        else return;
+
+        await vm.LoadFolderFromPath(folder, initialFile);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)

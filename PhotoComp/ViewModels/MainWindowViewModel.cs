@@ -47,7 +47,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         if (PickSourceFolderAsync is null) return;
         var folder = await PickSourceFolderAsync();
         if (string.IsNullOrWhiteSpace(folder)) return;
+        await LoadFolderFromPath(folder);
+    }
 
+    public async Task LoadFolderFromPath(string folder, string? initialFilePath = null)
+    {
         IsLoading = true;
         StringToBitmapConverter.ClearCache();
         ThumbnailItemViewModel.ClearCache();
@@ -57,10 +61,23 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             Images = loaded;
             _selectedPaths.Clear();
 
-            LeftPanel = CreatePanel(0);
-            RightPanel = CreatePanel(Images.Count > 1 ? 1 : 0);
+            int leftIdx = 0;
+            if (initialFilePath is not null)
+            {
+                for (int i = 0; i < loaded.Count; i++)
+                {
+                    if (string.Equals(loaded[i].FilePath, initialFilePath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        leftIdx = i;
+                        break;
+                    }
+                }
+            }
+
+            LeftPanel  = CreatePanel(leftIdx);
+            RightPanel = CreatePanel(Images.Count > 1 ? (leftIdx == 0 ? 1 : 0) : 0);
             SetActivePanel(LeftPanel);
-            RebuildFilmstrip(Images, 0);
+            RebuildFilmstrip(Images, leftIdx);
 
             OnPropertyChanged(nameof(SelectedCount));
             OnPropertyChanged(nameof(HasSelections));
