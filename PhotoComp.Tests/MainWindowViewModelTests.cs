@@ -703,5 +703,232 @@ public class MainWindowViewModelTests : IDisposable
         Assert.NotNull(vm.LeftPanel);
         Assert.InRange(vm.LeftPanel!.CurrentIndex, 0, Math.Max(0, vm.Images.Count - 1));
     }
+
+    // ── Filmstrip visibility ──────────────────────────────────────────
+
+    [Fact]
+    public void InitialState_IsFilmstripVisible_False()
+    {
+        var vm = new MainWindowViewModel();
+        Assert.False(vm.IsFilmstripVisible);
+    }
+
+    [Fact]
+    public void ToggleFilmstrip_MakesFilmstripVisible()
+    {
+        var vm = new MainWindowViewModel();
+        vm.ToggleFilmstripCommand.Execute(null);
+        Assert.True(vm.IsFilmstripVisible);
+    }
+
+    [Fact]
+    public void ToggleFilmstrip_Twice_HidesFilmstrip()
+    {
+        var vm = new MainWindowViewModel();
+        vm.ToggleFilmstripCommand.Execute(null);
+        vm.ToggleFilmstripCommand.Execute(null);
+        Assert.False(vm.IsFilmstripVisible);
+    }
+
+    // ── Filmstrip items ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task LoadFolder_FilmstripItems_NotNull()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        Assert.NotNull(vm.FilmstripItems);
+    }
+
+    [Fact]
+    public async Task LoadFolder_FilmstripItems_CountMatchesImages()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        WriteJpeg("c.jpg", new DateTime(2024, 3, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        Assert.Equal(3, vm.FilmstripItems!.Count);
+    }
+
+    [Fact]
+    public async Task LoadFolder_FilmstripItem0_IsCurrentImage()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        Assert.True(vm.FilmstripItems![0].IsCurrentImage);
+        Assert.False(vm.FilmstripItems![1].IsCurrentImage);
+    }
+
+    [Fact]
+    public async Task NavigatingActivePanel_UpdatesFilmstripCurrentImage()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        vm.LeftPanel!.CurrentIndex = 1;
+
+        Assert.False(vm.FilmstripItems![0].IsCurrentImage);
+        Assert.True(vm.FilmstripItems![1].IsCurrentImage);
+    }
+
+    [Fact]
+    public async Task HeartToggle_SyncsFilmstripItemIsHearted()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null);
+
+        Assert.True(vm.FilmstripItems![0].IsHearted);
+    }
+
+    [Fact]
+    public async Task HeartUntoggle_ClearsFilmstripItemIsHearted()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null); // add
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null); // remove
+
+        Assert.False(vm.FilmstripItems![0].IsHearted);
+    }
+
+    [Fact]
+    public async Task Delete_Confirmed_RebuildsFilmstripItems()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = await MakeVmWithLoaded(confirmAnswer: true);
+
+        await vm.DeleteImageAsync(vm.LeftPanel!.CurrentImage!);
+
+        Assert.NotNull(vm.FilmstripItems);
+        Assert.Equal(vm.Images.Count, vm.FilmstripItems!.Count);
+    }
+
+    // ── Active panel ──────────────────────────────────────────────────
+
+    [Fact]
+    public async Task LoadFolder_ActivePanel_IsLeftPanel()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        Assert.Same(vm.LeftPanel, vm.ActivePanel);
+    }
+
+    [Fact]
+    public async Task LoadFolder_IsLeftPanelActive_True()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        Assert.True(vm.IsLeftPanelActive);
+        Assert.False(vm.IsRightPanelActive);
+    }
+
+    [Fact]
+    public async Task SetActivePanel_RightPanel_UpdatesProperties()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        vm.SetActivePanel(vm.RightPanel);
+
+        Assert.Same(vm.RightPanel, vm.ActivePanel);
+        Assert.True(vm.IsRightPanelActive);
+        Assert.False(vm.IsLeftPanelActive);
+    }
+
+    [Fact]
+    public async Task SetActivePanel_RaisesPropertyChanged_ForIndicatorProperties()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.SetActivePanel(vm.RightPanel);
+
+        Assert.Contains(nameof(vm.ActivePanel), fired);
+        Assert.Contains(nameof(vm.IsLeftPanelActive), fired);
+        Assert.Contains(nameof(vm.IsRightPanelActive), fired);
+    }
+
+    [Fact]
+    public async Task SetActivePanel_SamePanel_DoesNotFirePropertyChanged()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.SetActivePanel(vm.LeftPanel); // already active
+
+        Assert.DoesNotContain(nameof(vm.ActivePanel), fired);
+    }
+
+    // ── FilmstripItemClicked routing ──────────────────────────────────
+
+    [Fact]
+    public async Task FilmstripItemClicked_NavigatesLeftPanel_WhenLeftIsActive()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        var item = new ThumbnailItemViewModel(1, vm.Images[1].FilePath, vm.Images[1].FileName, false);
+        vm.FilmstripItemClicked(item);
+
+        Assert.Equal(1, vm.LeftPanel!.CurrentIndex);
+    }
+
+    [Fact]
+    public async Task FilmstripItemClicked_NavigatesRightPanel_WhenRightIsActive()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        vm.SetActivePanel(vm.RightPanel);
+        var item = new ThumbnailItemViewModel(0, vm.Images[0].FilePath, vm.Images[0].FileName, false);
+        vm.FilmstripItemClicked(item);
+
+        Assert.Equal(0, vm.RightPanel!.CurrentIndex);
+        Assert.Equal(0, vm.LeftPanel!.CurrentIndex); // left panel untouched (starts at 0)
+    }
+
+    [Fact]
+    public async Task FilmstripItemClicked_UpdatesFilmstripCurrentImage()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        var item = new ThumbnailItemViewModel(1, vm.Images[1].FilePath, vm.Images[1].FileName, false);
+        vm.FilmstripItemClicked(item);
+
+        Assert.False(vm.FilmstripItems![0].IsCurrentImage);
+        Assert.True(vm.FilmstripItems![1].IsCurrentImage);
+    }
 }
 

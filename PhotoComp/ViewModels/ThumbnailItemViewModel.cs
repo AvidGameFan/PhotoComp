@@ -30,11 +30,31 @@ public sealed class ThumbnailItemViewModel : INotifyPropertyChanged
     public string FilePath { get; }
     public string FileName { get; }
 
-    /// <summary>True when this item matched the panel's current index at dialog open time.</summary>
-    public bool IsCurrentImage { get; }
+    /// <summary>True when this item matches the panel's current index.</summary>
+    public bool IsCurrentImage
+    {
+        get => _isCurrentImage;
+        set
+        {
+            if (_isCurrentImage == value) return;
+            _isCurrentImage = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsCurrentImage)));
+        }
+    }
+    private bool _isCurrentImage;
 
     /// <summary>True when this image has been hearted (selected for export).</summary>
-    public bool IsHearted { get; }
+    public bool IsHearted
+    {
+        get => _isHearted;
+        set
+        {
+            if (_isHearted == value) return;
+            _isHearted = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsHearted)));
+        }
+    }
+    private bool _isHearted;
 
     private Bitmap? _thumbnail;
     public Bitmap? Thumbnail
@@ -58,8 +78,8 @@ public sealed class ThumbnailItemViewModel : INotifyPropertyChanged
         Index          = index;
         FilePath       = filePath;
         FileName       = fileName;
-        IsCurrentImage = isCurrentImage;
-        IsHearted      = isHearted;
+        _isCurrentImage = isCurrentImage;
+        _isHearted      = isHearted;
 
         // Pre-populate from the static cache synchronously so the UI has something to
         // display immediately on the second open, before LoadAsync even starts.

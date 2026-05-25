@@ -83,6 +83,14 @@
                     <TextBlock Text="{Binding SingleViewButtonLabel}"/>
                 </Button>
 
+                <Separator/>
+
+                <Button Command="{Binding ToggleFilmstripCommand}"
+                        Padding="6,4"
+                        ToolTip.Tip="Toggle filmstrip">
+                    🎞 Filmstrip
+                </Button>
+
             </StackPanel>
         </Border>
 
@@ -109,7 +117,63 @@
                 </TextBlock>
             </StackPanel>
         </Border>
-
+        <!-- ── Filmstrip ─────────────────────────────────────────────── -->
+        <Border DockPanel.Dock="Bottom"
+                IsVisible="{Binding IsFilmstripVisible}"
+                Background="#1A1A1A"
+                BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                BorderThickness="0,1,0,0"
+                Height="116">
+            <Border.Styles>
+                <Style Selector="Border.film-cell">
+                    <Setter Property="Background"      Value="#2A2A2A"/>
+                    <Setter Property="BorderBrush"     Value="#444444"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Style>
+                <Style Selector="Border.film-cell:pointerover">
+                    <Setter Property="Background"  Value="#383838"/>
+                    <Setter Property="BorderBrush" Value="#888888"/>
+                </Style>
+                <Style Selector="Border.film-cell.current">
+                    <Setter Property="BorderBrush" Value="#4A9FC7"/>
+                </Style>
+            </Border.Styles>
+            <ScrollViewer x:Name="FilmstripScroller"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Disabled">
+                <ItemsControl x:Name="FilmstripList"
+                              ItemsSource="{Binding FilmstripItems}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="4,4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ThumbnailItemViewModel">
+                            <Border Classes="film-cell"
+                                    Classes.current="{Binding IsCurrentImage}"
+                                    Width="84" Height="84"
+                                    CornerRadius="3"
+                                    Margin="3,0"
+                                    Cursor="Hand"
+                                    ClipToBounds="True">
+                                <Grid>
+                                    <Image Source="{Binding Thumbnail}" Stretch="Uniform"/>
+                                    <TextBlock Text="&#x2665;"
+                                               IsVisible="{Binding IsHearted}"
+                                               Foreground="#FF4444"
+                                               FontSize="11"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Top"
+                                               Margin="0,2,4,0"
+                                               IsHitTestVisible="False"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
         <!-- ── Two image panels ────────────────────────────────────── -->
         <Grid x:Name="PanelsGrid">
             <Grid.ColumnDefinitions>
@@ -119,7 +183,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left panel -->
-            <Panel Grid.Column="0">
+            <Panel x:Name="LeftPanelContainer" Grid.Column="0">
                 <v:ImagePanelView DataContext="{Binding LeftPanel}"/>
                 <TextBlock IsVisible="{Binding LeftPanel, Converter={x:Static ObjectConverters.IsNull}}"
                            Text="Open a folder to begin."
@@ -140,6 +204,11 @@
                                 ToolTip.Tip="Show this image in the right panel">→</Button>
                     </StackPanel>
                 </Border>
+                <!-- Active-panel indicator: blue line across the top -->
+                <Border Height="3" Background="#4A9FC7"
+                        VerticalAlignment="Top"
+                        IsVisible="{Binding IsLeftPanelActive}"
+                        IsHitTestVisible="False"/>
             </Panel>
 
             <!-- Fixed divider (non-draggable) -->
@@ -148,7 +217,7 @@
                     Background="{DynamicResource SystemControlForegroundBaseLowBrush}"/>
 
             <!-- Right panel -->
-            <Panel Grid.Column="2" IsVisible="{Binding IsDualView}">
+            <Panel x:Name="RightPanelContainer" Grid.Column="2" IsVisible="{Binding IsDualView}">
                 <v:ImagePanelView DataContext="{Binding RightPanel}"/>
                 <TextBlock IsVisible="{Binding RightPanel, Converter={x:Static ObjectConverters.IsNull}}"
                            Text="Open a folder to begin."
@@ -168,6 +237,11 @@
                                 ToolTip.Tip="Browse all images (thumbnail picker)">⊞</Button>
                     </StackPanel>
                 </Border>
+                <!-- Active-panel indicator: blue line across the top -->
+                <Border Height="3" Background="#4A9FC7"
+                        VerticalAlignment="Top"
+                        IsVisible="{Binding IsRightPanelActive}"
+                        IsHitTestVisible="False"/>
             </Panel>
 
         </Grid>

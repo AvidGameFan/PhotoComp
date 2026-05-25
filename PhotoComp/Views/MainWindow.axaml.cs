@@ -2,6 +2,7 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
@@ -12,11 +13,20 @@ namespace PhotoComp.Views;
 public partial class MainWindow : Window
 {
     private MainWindowViewModel? _lastVm;
+    private ImagePanelViewModel? _filmstripScrollPanel;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        FilmstripList.AddHandler(PointerPressedEvent, OnFilmstripPointerPressed,
+                                 RoutingStrategies.Bubble);
+        LeftPanelContainer.AddHandler(PointerPressedEvent,
+            (_, _) => { if (DataContext is MainWindowViewModel vm) vm.SetActivePanel(vm.LeftPanel); },
+            RoutingStrategies.Bubble);
+        RightPanelContainer.AddHandler(PointerPressedEvent,
+            (_, _) => { if (DataContext is MainWindowViewModel vm) vm.SetActivePanel(vm.RightPanel); },
+            RoutingStrategies.Bubble);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -53,6 +63,9 @@ public partial class MainWindow : Window
             WirePanelPicker(vm.RightPanel);
         }
 
+        if (e.PropertyName == nameof(MainWindowViewModel.ActivePanel))
+            WireFilmstripScroll(vm.ActivePanel);
+
         if (e.PropertyName != nameof(MainWindowViewModel.IsSingleView)) return;
 
         // Column indices: 0=left, 1=divider, 2=right
@@ -60,6 +73,7 @@ public partial class MainWindow : Window
         {
             PanelsGrid.ColumnDefinitions[1].Width = new GridLength(0);
             PanelsGrid.ColumnDefinitions[2].Width = new GridLength(0);
+            vm.SetActivePanel(vm.LeftPanel);
         }
         else
         {
@@ -114,5 +128,45 @@ public partial class MainWindow : Window
         var dialog = new ThumbnailPickerDialog(panel.Images, currentIndex, panel.SelectedPaths);
         await dialog.ShowDialog(this);
         return dialog.SelectedIndex;
+    }
+
+    private void WireFilmstripScroll(ImagePanelViewModel? panel)
+    {
+        if (_filmstripScrollPanel is not null)
+            _filmstripScrollPanel.PropertyChanged -= OnFilmstripScrollPanelChanged;
+        _filmstripScrollPanel = panel;
+        if (panel is not null)
+            panel.PropertyChanged += OnFilmstripScrollPanelChanged;
+    }
+
+    private void OnFilmstripScrollPanelChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(ImagePanelViewModel.CurrentIndex)) return;
+        if (sender is ImagePanelViewModel panel)
+            ScrollFilmstripTo(panel.CurrentIndex);
+    }
+
+    private void ScrollFilmstripTo(int index)
+    {
+        const double cellWidth = 90; // 84px cell + 3px margin each side
+        double targetCenter  = index * cellWidth + cellWidth / 2;
+        double viewportWidth = FilmstripScroller.Viewport.Width;
+        double offset        = Math.Max(0, targetCenter - viewportWidth / 2);
+        FilmstripScroller.Offset = new Vector(offset, 0);
+    }
+
+    private void OnFilmstripPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel vm) return;
+        var element = e.Source as Control;
+        while (element is not null && !ReferenceEquals(element, FilmstripList))
+        {
+            if (element.DataContext is ThumbnailItemViewModel item)
+            {
+                vm.FilmstripItemClicked(item);
+                return;
+            }
+            element = element.Parent as Control;
+        }
     }
 }

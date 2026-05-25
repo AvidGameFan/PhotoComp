@@ -110,4 +110,71 @@ public class LruCacheTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new LruCache<string, int>(0));
     }
+
+    // ── Clear ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Clear_EmptiesCache()
+    {
+        var cache = new LruCache<string, int>(5);
+        cache.Set("a", 1);
+        cache.Set("b", 2);
+
+        cache.Clear();
+
+        Assert.Equal(0, cache.Count);
+    }
+
+    [Fact]
+    public void Clear_MakesAllKeysMiss()
+    {
+        var cache = new LruCache<string, int>(5);
+        cache.Set("a", 1);
+        cache.Set("b", 2);
+
+        cache.Clear();
+
+        Assert.False(cache.TryGet("a", out _));
+        Assert.False(cache.TryGet("b", out _));
+    }
+
+    [Fact]
+    public void Clear_InvokesEvictionCallback_ForAllItems()
+    {
+        var evicted = new List<int>();
+        var cache = new LruCache<string, int>(5, onEvict: v => evicted.Add(v));
+        cache.Set("a", 10);
+        cache.Set("b", 20);
+        cache.Set("c", 30);
+
+        cache.Clear();
+
+        Assert.Equal(3, evicted.Count);
+        Assert.Contains(10, evicted);
+        Assert.Contains(20, evicted);
+        Assert.Contains(30, evicted);
+    }
+
+    [Fact]
+    public void Clear_OnEmptyCache_DoesNotThrow()
+    {
+        var cache = new LruCache<string, int>(5);
+        var ex = Record.Exception(() => cache.Clear());
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void Clear_AllowsNewInsertsAfterwards()
+    {
+        var cache = new LruCache<string, int>(2);
+        cache.Set("a", 1);
+        cache.Set("b", 2);
+        cache.Clear();
+
+        cache.Set("c", 3);
+
+        Assert.True(cache.TryGet("c", out var val));
+        Assert.Equal(3, val);
+        Assert.Equal(1, cache.Count);
+    }
 }

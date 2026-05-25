@@ -112,4 +112,97 @@ public class ThumbnailItemViewModelTests
         // so PropertyChanged must fire exactly once for Thumbnail.
         Assert.Contains(nameof(vm.Thumbnail), fired);
     }
+
+    // ── IsHearted constructor ─────────────────────────────────────────
+
+    [Fact]
+    public void Constructor_SetsIsHearted_True()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false, isHearted: true);
+        Assert.True(vm.IsHearted);
+    }
+
+    [Fact]
+    public void Constructor_SetsIsHearted_False()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false, isHearted: false);
+        Assert.False(vm.IsHearted);
+    }
+
+    // ── Mutable IsCurrentImage ────────────────────────────────────────
+
+    [Fact]
+    public void IsCurrentImage_Setter_ChangesValue()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false);
+        vm.IsCurrentImage = true;
+        Assert.True(vm.IsCurrentImage);
+    }
+
+    [Fact]
+    public void IsCurrentImage_Setter_RaisesPropertyChanged()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false);
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.IsCurrentImage = true;
+
+        Assert.Contains(nameof(vm.IsCurrentImage), fired);
+    }
+
+    [Fact]
+    public void IsCurrentImage_SetSameValue_DoesNotRaisePropertyChanged()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false);
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.IsCurrentImage = false; // same as initial
+
+        Assert.DoesNotContain(nameof(vm.IsCurrentImage), fired);
+    }
+
+    // ── Mutable IsHearted ─────────────────────────────────────────────
+
+    [Fact]
+    public void IsHearted_Setter_ChangesValue()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false, isHearted: false);
+        vm.IsHearted = true;
+        Assert.True(vm.IsHearted);
+    }
+
+    [Fact]
+    public void IsHearted_Setter_RaisesPropertyChanged()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false, isHearted: false);
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.IsHearted = true;
+
+        Assert.Contains(nameof(vm.IsHearted), fired);
+    }
+
+    [Fact]
+    public void IsHearted_SetSameValue_DoesNotRaisePropertyChanged()
+    {
+        var vm = new ThumbnailItemViewModel(0, "/photos/img.jpg", "img.jpg", false, isHearted: true);
+        var fired = new List<string?>();
+        vm.PropertyChanged += (_, e) => fired.Add(e.PropertyName);
+
+        vm.IsHearted = true; // same as initial
+
+        Assert.DoesNotContain(nameof(vm.IsHearted), fired);
+    }
+
+    // ── ClearCache ────────────────────────────────────────────────────
+
+    [Fact]
+    public void ClearCache_DoesNotThrow()
+    {
+        var ex = Record.Exception(() => ThumbnailItemViewModel.ClearCache());
+        Assert.Null(ex);
+    }
 }
