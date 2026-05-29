@@ -38,6 +38,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsRightPanelActive))]
     private ImagePanelViewModel? _rightPanel;
     [ObservableProperty] private bool _isLoading;
+    [ObservableProperty] private string? _currentFolder;
 
     public int SelectedCount => _selectedPaths.Count;
 
@@ -92,6 +93,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             RightPanel = CreatePanel(Images.Count > 1 ? (leftIdx == 0 ? 1 : 0) : 0);
             SetActivePanel(LeftPanel);
             RebuildFilmstrip(Images, leftIdx);
+            CurrentFolder = folder;
 
             OnPropertyChanged(nameof(SelectedCount));
             OnPropertyChanged(nameof(HasSelections));

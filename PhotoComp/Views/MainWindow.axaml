@@ -101,22 +101,32 @@
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="8,3">
-            <StackPanel Orientation="Horizontal" Spacing="12">
-                <TextBlock FontSize="11">
-                    <Run Text="Left: "/>
-                    <Run Text="{Binding LeftPanel.PositionLabel}"/>
-                </TextBlock>
-                <TextBlock FontSize="11" Opacity="0.4">│</TextBlock>
-                <TextBlock FontSize="11">
-                    <Run Text="Right: "/>
-                    <Run Text="{Binding RightPanel.PositionLabel}"/>
-                </TextBlock>
-                <TextBlock FontSize="11" Opacity="0.4">│</TextBlock>
-                <TextBlock FontSize="11">
-                    <Run Text="Selected: "/>
-                    <Run Text="{Binding SelectedCount}"/>
-                </TextBlock>
-            </StackPanel>
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Spacing="12">
+                    <TextBlock FontSize="11">
+                        <Run Text="Left: "/>
+                        <Run Text="{Binding LeftPanel.PositionLabel}"/>
+                    </TextBlock>
+                    <TextBlock FontSize="11" Opacity="0.4">│</TextBlock>
+                    <TextBlock FontSize="11">
+                        <Run Text="Right: "/>
+                        <Run Text="{Binding RightPanel.PositionLabel}"/>
+                    </TextBlock>
+                    <TextBlock FontSize="11" Opacity="0.4">│</TextBlock>
+                    <TextBlock FontSize="11">
+                        <Run Text="Selected: "/>
+                        <Run Text="{Binding SelectedCount}"/>
+                    </TextBlock>
+                </StackPanel>
+                <TextBlock DockPanel.Dock="Right"
+                           FontSize="11"
+                           Opacity="0.6"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Text="{Binding CurrentFolder}"
+                           IsVisible="{Binding CurrentFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           ToolTip.Tip="{Binding CurrentFolder}"/>
+            </DockPanel>
         </Border>
         <!-- ── Filmstrip ─────────────────────────────────────────────── -->
         <Border DockPanel.Dock="Bottom"
