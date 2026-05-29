@@ -116,6 +116,7 @@ public class MainWindowViewModelTests : IDisposable
         WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
         WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
         var vm = MakeVm();
+        vm.ConfirmAsync = (_, _, _) => Task.FromResult(true); // user confirms
 
         // First load — heart an image
         await vm.LoadFolderCommand.ExecuteAsync(null);
@@ -127,6 +128,93 @@ public class MainWindowViewModelTests : IDisposable
 
         Assert.False(vm.HasSelections);
         Assert.Equal(0, vm.SelectedCount);
+    }
+
+    [Fact]
+    public async Task LoadFolder_WhenFavoritesExistAndUserCancels_DoesNotLoad()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        vm.ConfirmAsync = (_, _, _) => Task.FromResult(false); // user cancels
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null);
+        Assert.True(vm.HasSelections);
+
+        var imagesBeforeSwitch = vm.Images;
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        Assert.Same(imagesBeforeSwitch, vm.Images); // folder was not reloaded
+        Assert.True(vm.HasSelections);              // favorites preserved
+    }
+
+    [Fact]
+    public async Task LoadFolder_WhenFavoritesExistAndUserConfirms_Proceeds()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+
+        bool confirmCalled = false;
+        vm.ConfirmAsync = (title, _, _) =>
+        {
+            confirmCalled = true;
+            Assert.Contains("Switch Folder", title);
+            return Task.FromResult(true);
+        };
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null);
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        Assert.True(confirmCalled);
+        Assert.False(vm.HasSelections); // favorites cleared after confirmed reload
+    }
+
+    [Fact]
+    public async Task LoadFolder_WhenFavoritesAreSaved_SkipsConfirmDialog()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
+
+        bool confirmCalled = false;
+        vm.ConfirmAsync = (_, _, _) => { confirmCalled = true; return Task.FromResult(true); };
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null);
+        await vm.CopySelectedCommand.ExecuteAsync(null); // marks saved
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        Assert.False(confirmCalled); // dialog suppressed because copy was done
+    }
+
+    [Fact]
+    public async Task LoadFolder_AfterCopyThenNewHeart_ShowsConfirmAgain()
+    {
+        WriteJpeg("a.jpg", new DateTime(2024, 1, 1));
+        WriteJpeg("b.jpg", new DateTime(2024, 2, 1));
+        var vm = MakeVm();
+        vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
+
+        int confirmCount = 0;
+        vm.ConfirmAsync = (_, _, _) => { confirmCount++; return Task.FromResult(true); };
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null);
+        await vm.CopySelectedCommand.ExecuteAsync(null); // marks saved
+
+        // Heart a new image — should dirty the saved flag
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null); // un-heart
+        vm.LeftPanel!.ToggleHeartCommand.Execute(null); // re-heart (still has selection)
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, confirmCount); // dialog shown because new tagging occurred
     }
 
     [Fact]
@@ -565,7 +653,7 @@ public class MainWindowViewModelTests : IDisposable
     private async Task<MainWindowViewModel> MakeVmWithLoaded(bool confirmAnswer = true)
     {
         var vm = MakeVm();
-        vm.ConfirmAsync   = (_, _) => Task.FromResult(confirmAnswer);
+        vm.ConfirmAsync   = (_, _, _) => Task.FromResult(confirmAnswer);
         vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
         await vm.LoadFolderCommand.ExecuteAsync(null);
         return vm;
@@ -652,7 +740,7 @@ public class MainWindowViewModelTests : IDisposable
         File.WriteAllText(Path.Combine(_tempDir, "photo.json"), "{}");
         string? capturedMessage = null;
         var vm = MakeVm();
-        vm.ConfirmAsync   = (_, m) => { capturedMessage = m; return Task.FromResult(false); };
+        vm.ConfirmAsync   = (_, m, _) => { capturedMessage = m; return Task.FromResult(false); };
         vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
         await vm.LoadFolderCommand.ExecuteAsync(null);
 
@@ -667,7 +755,7 @@ public class MainWindowViewModelTests : IDisposable
         WriteJpeg("photo.jpg", DateTime.Now);
         string? capturedMessage = null;
         var vm = MakeVm();
-        vm.ConfirmAsync   = (_, m) => { capturedMessage = m; return Task.FromResult(false); };
+        vm.ConfirmAsync   = (_, m, _) => { capturedMessage = m; return Task.FromResult(false); };
         vm.ShowAlertAsync = (_, _) => Task.CompletedTask;
         await vm.LoadFolderCommand.ExecuteAsync(null);
 

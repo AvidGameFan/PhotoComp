@@ -15,9 +15,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     /// <summary>Shows a modal alert dialog. Injected by the View; null-safe (no-ops in tests).</summary>
     public Func<string, string, Task>? ShowAlertAsync { get; set; }
     /// <summary>Shows a yes/no confirmation dialog. Returns false when null (safe default).</summary>
-    public Func<string, string, Task<bool>>? ConfirmAsync { get; set; }
+    public Func<string, string, string, Task<bool>>? ConfirmAsync { get; set; }
     public ZoomState SharedZoom { get; } = new();
     private readonly HashSet<string> _selectedPaths = [];
+
+    private bool _favoritesAreSaved;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedCount))]
@@ -52,6 +54,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     public async Task LoadFolderFromPath(string folder, string? initialFilePath = null)
     {
+        if (_selectedPaths.Count > 0 && !_favoritesAreSaved)
+        {
+            var count = _selectedPaths.Count;
+            var noun = count == 1 ? "1 favorited image" : $"{count} favorited images";
+            var confirmed = await (ConfirmAsync?.Invoke(
+                "Switch Folder?",
+                $"You have {noun}. Opening a new folder will clear all favorites.\n\nContinue?",
+                "Continue")
+                ?? Task.FromResult(true));
+            if (!confirmed) return;
+        }
+
         IsLoading = true;
         StringToBitmapConverter.ClearCache();
         ThumbnailItemViewModel.ClearCache();
@@ -111,6 +125,9 @@ public sealed partial class MainWindowViewModel : ViewModelBase
                 sb.AppendLine($"  • {fileName}: {error}");
         }
 
+        if (!result.HasFailures)
+            _favoritesAreSaved = true;
+
         await (ShowAlertAsync?.Invoke(title, sb.ToString().TrimEnd()) ?? Task.CompletedTask);
     }
 
@@ -149,6 +166,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var vm = new ImagePanelViewModel(Images, SharedZoom, _selectedPaths, startIndex);
         vm.HeartToggled += (_, _) =>
         {
+            _favoritesAreSaved = false;
             OnPropertyChanged(nameof(SelectedCount));
             OnPropertyChanged(nameof(HasSelections));
             CopySelectedCommand.NotifyCanExecuteChanged();
@@ -177,7 +195,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         sb.AppendLine();
         sb.Append("This cannot be undone.");
 
-        var confirmed = await (ConfirmAsync?.Invoke("Delete Image?", sb.ToString()) ?? Task.FromResult(false));
+        var confirmed = await (ConfirmAsync?.Invoke("Delete Image?", sb.ToString(), "Delete") ?? Task.FromResult(false));
         if (!confirmed) return;
 
         var result = DeleteService.Delete(item.FilePath);

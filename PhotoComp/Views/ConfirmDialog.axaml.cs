@@ -14,9 +14,10 @@ public partial class ConfirmDialog : Window
         NoButton.Click  += (_, _) => { Result = false; Close(); };
     }
 
-    public ConfirmDialog(string title, string message) : this()
+    public ConfirmDialog(string title, string message, string confirmLabel = "Delete") : this()
     {
         Title = title;
         MessageText.Text = message;
+        YesButton.Content = $"  {confirmLabel}  ";
     }
 }

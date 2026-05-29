@@ -134,9 +134,9 @@ public partial class MainWindow : Window
         return dialog.ShowDialog(this);
     }
 
-    private async Task<bool> ConfirmAsync(string title, string message)
+    private async Task<bool> ConfirmAsync(string title, string message, string confirmLabel)
     {
-        var dialog = new ConfirmDialog(title, message);
+        var dialog = new ConfirmDialog(title, message, confirmLabel);
         await dialog.ShowDialog(this);
         return dialog.Result;
     }
