@@ -1,8 +1,14 @@
 # PhotoComp
 
-A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favorites with a heart, then copy them — along with any sidecar files — to a destination folder. Delete unwanted images directly from the app, including their RAW originals and metadata sidecars.
+A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favorites with a heart, then copy them — along with any sidecar files — to a destination folder. Delete unwanted images directly from the app, including their RAW originals and metadata sidecar files.
 
----
+## Uses
+
+This tool is useful for both AI-generated images and camera photos.
+
+For photos, the single-view is helpful for zooming in on details and removing photos that are too blurry to work with. The corresponding RAW file (if existing) will also be removed. Also, the favorites tagging feature allows you to select the best images out of a folder; copying to another working folder, you can then edit further or send off for printing.
+
+### For AI art, the dual-pane feature allows comparisons to pick the best out of multiple revisions of the same image. A lot of intermediate working images can get created; tagging with the favorites feature allows just the best or final versions to be copied to a another folder for safe-keeping.
 
 ## Features
 
@@ -13,6 +19,7 @@ A desktop photo comparison tool for Windows and Linux. Open a folder of images a
 - **EXIF-sorted loading** — images are sorted by date taken (falls back to file modification time when EXIF is absent)
 - **Favorite selection** — click the heart icon on any image to mark it; click again to deselect
 - **Copy with sidecars** — copies selected images to a chosen folder; automatically copies matching sidecar files (RAW, XMP, JSON, TXT) alongside each image
+- **Drag-and-drop opening** — drop a folder or image file onto the app to open it quickly
 - **Delete with sidecars** — permanently deletes the current image and any accompanying sidecar files after confirmation
 - **Single/dual view toggle** — switch between side-by-side and single-panel view from the toolbar
 - **Busy indicator** — a loading overlay and wait cursor appear while a large folder is being scanned
@@ -33,11 +40,13 @@ A desktop photo comparison tool for Windows and Linux. Open a folder of images a
 The zip contains a folder of files — the app and the bundled .NET 10 runtime. There is no single-file executable; just extract the zip and run the binary inside.
 
 **Windows** — extract `PhotoComp-windows-x64-vX.Y.Z.zip`, then:
+
 ```
 PhotoComp.exe
 ```
 
 **Linux** — extract `PhotoComp-linux-x64-vX.Y.Z.zip`, then:
+
 ```bash
 chmod +x PhotoComp
 ./PhotoComp
@@ -57,7 +66,7 @@ dotnet run --project PhotoComp/PhotoComp.csproj
 
 ### Opening images
 
-Click **📁 Open Folder** in the toolbar and choose a folder containing JPEG or PNG images. Images are loaded in EXIF date order (oldest first). The left panel starts at the first image and the right panel starts at the second.
+Click **📁 Open Folder** in the toolbar and choose a folder containing JPEG or PNG images. Images are loaded in EXIF date order (oldest first). The left panel starts at the first image and the right panel starts at the second. You can also drag and drop a folder onto the window, or drop a single image file to open its folder and jump to that image.
 
 ### Navigating
 
@@ -86,10 +95,10 @@ Click the **♡** heart icon in the top-right corner of a panel to mark the curr
 
 ### Copying selected images
 
-1. Heart one or more images.
-2. Click **💾 Copy Selected (N)** in the toolbar.
-3. Choose a destination folder.
-4. A summary dialog reports how many files were copied, how many were skipped (already present), and details of any errors.
+1.  Heart one or more images.
+2.  Click **💾 Copy Selected (N)** in the toolbar.
+3.  Choose a destination folder.
+4.  A summary dialog reports how many files were copied, how many were skipped (already present), and details of any errors.
 
 For each image copied, PhotoComp also copies any matching sidecar files from the same source folder — RAW originals (`.arw`, `.cr2`, `.cr3`, `.nef`, `.raf`, `.rw2`, and [many more](#sidecar-formats)), XMP metadata (`.xmp`), and plain-text companions (`.json`, `.txt`). For example, `IMG_1234.jpg` will carry over `IMG_1234.arw` and `IMG_1234.xmp` if they exist. Originals are never modified or overwritten.
 
@@ -160,10 +169,11 @@ dotnet test PhotoComp.Tests/PhotoComp.Tests.csproj
 
 ### Viewable images
 
-| Format | Extension |
-|--------|-----------|
+
+| Format | Extension     |
+|--------|---------------|
 | JPEG | `.jpg`, `.jpeg` |
-| PNG | `.png` |
+| PNG  | `.png`          |
 
 ### Sidecar formats
 
