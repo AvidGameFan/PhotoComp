@@ -24,6 +24,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(SelectedCount))]
     [NotifyCanExecuteChangedFor(nameof(CopySelectedCommand))]
+    [NotifyCanExecuteChangedFor(nameof(MoveSelectedCommand))]
     private IReadOnlyList<ImageItem> _images = [];
 
     [ObservableProperty]
@@ -98,6 +99,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(SelectedCount));
             OnPropertyChanged(nameof(HasSelections));
             CopySelectedCommand.NotifyCanExecuteChanged();
+            MoveSelectedCommand.NotifyCanExecuteChanged();
         }
         finally
         {
@@ -129,6 +131,57 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
         if (!result.HasFailures)
             _favoritesAreSaved = true;
+
+        await (ShowAlertAsync?.Invoke(title, sb.ToString().TrimEnd()) ?? Task.CompletedTask);
+    }
+
+    [RelayCommand(CanExecute = nameof(HasSelections))]
+    private async Task MoveSelected()
+    {
+        if (PickDestFolderAsync is null) return;
+        var dest = await PickDestFolderAsync();
+        if (string.IsNullOrWhiteSpace(dest)) return;
+
+        var result = MoveService.MoveSelected(_selectedPaths, dest);
+
+        var title = result.HasFailures ? "Move — Errors Occurred" : "Move Complete";
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"Moved:   {result.Moved}");
+        if (result.Skipped > 0)
+            sb.AppendLine($"Skipped (already exists):  {result.Skipped}");
+        if (result.HasFailures)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Failed:  {result.Failures.Count}");
+            foreach (var (fileName, error) in result.Failures)
+                sb.AppendLine($"  \u2022 {fileName}: {error}");
+        }
+
+        // Remove successfully moved images from the list and selections.
+        if (result.MovedSourcePaths.Count > 0)
+        {
+            var movedSet = new HashSet<string>(result.MovedSourcePaths, StringComparer.OrdinalIgnoreCase);
+            foreach (var p in result.MovedSourcePaths)
+                _selectedPaths.Remove(p);
+
+            var newImages = Images.Where(i => !movedSet.Contains(i.FilePath)).ToList().AsReadOnly();
+            var leftIdx  = Math.Min(LeftPanel?.CurrentIndex  ?? 0, Math.Max(0, newImages.Count - 1));
+            var rightIdx = Math.Min(RightPanel?.CurrentIndex ?? 0, Math.Max(0, newImages.Count - 1));
+
+            Images = newImages;
+            LeftPanel  = newImages.Count > 0 ? CreatePanel(leftIdx)  : null;
+            RightPanel = newImages.Count > 0 ? CreatePanel(rightIdx) : null;
+            SetActivePanel(LeftPanel);
+            RebuildFilmstrip(newImages, leftIdx);
+
+            OnPropertyChanged(nameof(SelectedCount));
+            OnPropertyChanged(nameof(HasSelections));
+            CopySelectedCommand.NotifyCanExecuteChanged();
+            MoveSelectedCommand.NotifyCanExecuteChanged();
+
+            if (!result.HasFailures)
+                _favoritesAreSaved = true;
+        }
 
         await (ShowAlertAsync?.Invoke(title, sb.ToString().TrimEnd()) ?? Task.CompletedTask);
     }
@@ -172,6 +225,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             OnPropertyChanged(nameof(SelectedCount));
             OnPropertyChanged(nameof(HasSelections));
             CopySelectedCommand.NotifyCanExecuteChanged();
+            MoveSelectedCommand.NotifyCanExecuteChanged();
             if (_filmstripItems is not null)
                 foreach (var fi in _filmstripItems)
                     fi.IsHearted = _selectedPaths.Contains(fi.FilePath);
@@ -224,6 +278,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(HasSelections));
         CopySelectedCommand.NotifyCanExecuteChanged();
+        MoveSelectedCommand.NotifyCanExecuteChanged();
     }
 
     // ── Filmstrip ─────────────────────────────────────────────────────────────────────────────

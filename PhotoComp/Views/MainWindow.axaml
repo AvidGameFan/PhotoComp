@@ -63,6 +63,16 @@
                     </TextBlock>
                 </Button>
 
+                <Button Command="{Binding MoveSelectedCommand}"
+                        IsEnabled="{Binding HasSelections}"
+                        ToolTip.Tip="Move selected images to another folder (files are removed from source)">
+                    <TextBlock>
+                        <Run Text="📦  Move Selected ("/>
+                        <Run Text="{Binding SelectedCount}"/>
+                        <Run Text=")"/>
+                    </TextBlock>
+                </Button>
+
                 <Separator/>
 
                 <TextBlock VerticalAlignment="Center" Opacity="0.7" FontSize="12">
