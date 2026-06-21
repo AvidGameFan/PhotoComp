@@ -44,7 +44,9 @@
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="8,4">
-            <StackPanel Orientation="Horizontal" Spacing="6">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" ClipToBounds="True">
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
 
                 <Button Command="{Binding LoadFolderCommand}"
                         ToolTip.Tip="Open a folder of images">
@@ -96,13 +98,25 @@
 
                 <Separator/>
 
-                <Button Command="{Binding ToggleFilmstripCommand}"
-                        Padding="6,4"
-                        ToolTip.Tip="Toggle filmstrip">
-                    🎞 Filmstrip
-                </Button>
+                    <Button Command="{Binding ToggleFilmstripCommand}"
+                            Padding="6,4"
+                            ToolTip.Tip="Toggle filmstrip">
+                        🎞 Filmstrip
+                    </Button>
 
-            </StackPanel>
+                </StackPanel>
+
+                <TextBlock Grid.Column="1"
+                           MinWidth="0"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Opacity="0.6"
+                           TextTrimming="CharacterEllipsis"
+                           Text="{Binding CurrentFolder}"
+                           IsVisible="{Binding CurrentFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           ToolTip.Tip="{Binding CurrentFolder}"/>
+
+            </Grid>
         </Border>
 
         <!-- ── Status bar ──────────────────────────────────────────── -->
@@ -128,14 +142,6 @@
                         <Run Text="{Binding SelectedCount}"/>
                     </TextBlock>
                 </StackPanel>
-                <TextBlock DockPanel.Dock="Right"
-                           FontSize="11"
-                           Opacity="0.6"
-                           HorizontalAlignment="Right"
-                           VerticalAlignment="Center"
-                           Text="{Binding CurrentFolder}"
-                           IsVisible="{Binding CurrentFolder, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                           ToolTip.Tip="{Binding CurrentFolder}"/>
             </DockPanel>
         </Border>
         <!-- ── Filmstrip ─────────────────────────────────────────────── -->
