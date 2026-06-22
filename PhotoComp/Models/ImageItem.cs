@@ -10,4 +10,6 @@ public sealed record ImageItem(
     int Width,
     int Height,
     string? Prompt = null,
-    string? ExifCaption = null);
+    string? ExifCaption = null,
+    ExifDetails? ExifDetails = null,
+    AiDetails? AiDetails = null);

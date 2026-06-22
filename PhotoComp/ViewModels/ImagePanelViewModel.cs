@@ -21,9 +21,22 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(PositionLabel))]
     [NotifyPropertyChangedFor(nameof(InfoText))]
     [NotifyPropertyChangedFor(nameof(PromptText))]
+    [NotifyPropertyChangedFor(nameof(ExifDetailRows))]
     [NotifyCanExecuteChangedFor(nameof(CopyToClipboardCommand))]
     [NotifyCanExecuteChangedFor(nameof(CopyPromptCommand))]
     private int _currentIndex;
+
+    [ObservableProperty] private bool _isExifVisible;
+
+    [RelayCommand]
+    private void ToggleExifOverlay() => IsExifVisible = !IsExifVisible;
+
+    partial void OnCurrentIndexChanged(int value)
+    {
+        // If the newly displayed image has no EXIF data, close the overlay.
+        if (IsExifVisible && ExifDetailRows is null)
+            IsExifVisible = false;
+    }
 
     public ImagePanelViewModel(
         IReadOnlyList<ImageItem> images,
@@ -56,6 +69,59 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     public string InfoText => CurrentImage is null
         ? string.Empty
         : $"{CurrentImage.Width}\u00d7{CurrentImage.Height}  |  {CurrentImage.DateTaken:yyyy-MM-dd HH:mm:ss}";
+
+    /// <summary>Rows for the EXIF detail overlay. Null when no data is available.</summary>
+    public IReadOnlyList<ExifRow>? ExifDetailRows
+    {
+        get
+        {
+            var img = CurrentImage;
+            if (img is null) return null;
+
+            var rows = new List<ExifRow>();
+            var d = img.ExifDetails;
+
+            if (!string.IsNullOrEmpty(d?.CameraModel))
+            {
+                var cam = (!string.IsNullOrEmpty(d.CameraMake) &&
+                           !d.CameraModel.StartsWith(d.CameraMake, StringComparison.OrdinalIgnoreCase))
+                    ? $"{d.CameraMake} {d.CameraModel}" : d.CameraModel!;
+                rows.Add(new ExifRow("Camera", cam));
+            }
+            if (!string.IsNullOrEmpty(d?.LensModel))
+            {
+                var lens = (!string.IsNullOrEmpty(d.LensMake) &&
+                            !d.LensModel.StartsWith(d.LensMake, StringComparison.OrdinalIgnoreCase))
+                    ? $"{d.LensMake} {d.LensModel}" : d.LensModel!;
+                rows.Add(new ExifRow("Lens", lens));
+            }
+            if (!string.IsNullOrEmpty(d?.ShutterSpeed))  rows.Add(new ExifRow("Shutter",       d.ShutterSpeed!));
+            if (!string.IsNullOrEmpty(d?.Aperture))       rows.Add(new ExifRow("Aperture",      d.Aperture!));
+            if (!string.IsNullOrEmpty(d?.Iso))            rows.Add(new ExifRow("ISO",           d.Iso!));
+            if (!string.IsNullOrEmpty(d?.FocalLength))    rows.Add(new ExifRow("Focal Length",  d.FocalLength!));
+            if (!string.IsNullOrEmpty(d?.FocalLength35mm)) rows.Add(new ExifRow("35mm Equiv.",  d.FocalLength35mm!));
+            if (!string.IsNullOrEmpty(d?.ExposureBias))   rows.Add(new ExifRow("Exp. Bias",    d.ExposureBias!));
+            if (!string.IsNullOrEmpty(d?.ExposureProgram)) rows.Add(new ExifRow("Program",     d.ExposureProgram!));
+            if (!string.IsNullOrEmpty(d?.MeteringMode))   rows.Add(new ExifRow("Metering",     d.MeteringMode!));
+            if (!string.IsNullOrEmpty(d?.Flash))          rows.Add(new ExifRow("Flash",         d.Flash!));
+            if (!string.IsNullOrEmpty(d?.WhiteBalance))   rows.Add(new ExifRow("White Balance", d.WhiteBalance!));
+
+            if (!string.IsNullOrEmpty(img.Prompt))
+            {
+                rows.Add(new ExifRow("Type", "AI Generated"));
+                var ai = img.AiDetails;
+                if (!string.IsNullOrEmpty(ai?.Model))          rows.Add(new ExifRow("Model",     ai.Model!));
+                if (!string.IsNullOrEmpty(ai?.VaeModel))        rows.Add(new ExifRow("VAE",       ai.VaeModel!));
+                if (!string.IsNullOrEmpty(ai?.Sampler))         rows.Add(new ExifRow("Sampler",   ai.Sampler!));
+                if (!string.IsNullOrEmpty(ai?.Scheduler))       rows.Add(new ExifRow("Scheduler", ai.Scheduler!));
+                if (!string.IsNullOrEmpty(ai?.GuidanceScale))   rows.Add(new ExifRow("Guidance",  ai.GuidanceScale!));
+                if (!string.IsNullOrEmpty(ai?.Seed))            rows.Add(new ExifRow("Seed",      ai.Seed!));
+                if (!string.IsNullOrEmpty(ai?.NegativePrompt))  rows.Add(new ExifRow("Negative",  ai.NegativePrompt!));
+            }
+
+            return rows.Count > 0 ? rows : null;
+        }
+    }
 
     /// <summary>
     /// Text shown in the bottom-right overlay: SD generation prompt when present,

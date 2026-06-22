@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:PhotoComp.ViewModels"
              xmlns:conv="using:PhotoComp.Converters"
+             xmlns:models="using:PhotoComp.Models"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -96,14 +97,49 @@
                     ToolTip.Tip="Delete image (Del)">🗑</Button>
         </Border>
 
-        <!-- Info overlay (bottom-left): dimensions and date/time -->
-        <Border HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                Background="#CC000000" CornerRadius="0,4,0,0"
-                IsHitTestVisible="False">
-            <TextBlock Text="{Binding InfoText}"
-                       Foreground="White" FontSize="11"
-                       Margin="6,3"/>
-        </Border>
+        <!-- Info overlay (bottom-left): dimensions and date/time; click to expand EXIF details -->
+        <StackPanel HorizontalAlignment="Left" VerticalAlignment="Bottom" Spacing="0">
+
+            <!-- EXIF detail overlay — visible when toggled, grows upward above the info bar -->
+            <Border Background="#E8000000" CornerRadius="0,4,0,0"
+                    IsVisible="{Binding IsExifVisible}"
+                    MaxHeight="280" MaxWidth="360" Padding="10,8">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding ExifDetailRows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:ExifRow">
+                                <Grid ColumnDefinitions="100,*" Margin="0,2">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding Label}"
+                                               Foreground="#AAAAAA" FontSize="11"
+                                               VerticalAlignment="Top"/>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Value}"
+                                               Foreground="White" FontSize="11"
+                                               TextWrapping="Wrap"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Info bar (always visible when image is loaded) -->
+            <Button Command="{Binding ToggleExifOverlayCommand}"
+                    Background="#CC000000" CornerRadius="0,4,0,0"
+                    BorderThickness="0" Padding="0"
+                    IsEnabled="{Binding ExifDetailRows,
+                                Converter={x:Static ObjectConverters.IsNotNull}}"
+                    ToolTip.Tip="Click to show/hide EXIF details"
+                    IsVisible="{Binding InfoText,
+                                Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <TextBlock Text="{Binding InfoText}"
+                           Foreground="White" FontSize="11"
+                           Margin="6,3"/>
+            </Button>
+
+        </StackPanel>
 
         <!-- SD prompt overlay (bottom-right): visible only when prompt metadata exists -->
         <Border HorizontalAlignment="Right" VerticalAlignment="Bottom"

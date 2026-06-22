@@ -450,4 +450,89 @@ public class ImagePanelViewModelTests
         await vm.ShowPickerCommand.ExecuteAsync(null);
         Assert.Equal(0, vm.CurrentIndex); // clamped to 0
     }
+
+    // ── ExifDetailRows ────────────────────────────────────────────────
+
+    private static ImageItem MakeAiItem(string? prompt, AiDetails? ai = null) =>
+        new("/photos/a.png", "a.png", DateTime.Now, 1024, 1024,
+            Prompt: prompt, AiDetails: ai);
+
+    [Fact]
+    public void ExifDetailRows_IsNull_WhenNoMetadata()
+    {
+        var images = new List<ImageItem> { MakeAiItem(null) }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        Assert.Null(vm.ExifDetailRows);
+    }
+
+    [Fact]
+    public void ExifDetailRows_ContainsAiGeneratedRow_WhenPromptIsSet()
+    {
+        var images = new List<ImageItem> { MakeAiItem("a cat") }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        Assert.Contains(vm.ExifDetailRows!, r => r.Label == "Type" && r.Value == "AI Generated");
+    }
+
+    [Fact]
+    public void ExifDetailRows_HasOnlyAiGeneratedRow_WhenAiDetailsIsNull()
+    {
+        // Prompt present but no AiDetails (e.g. JPEG with EXIF UserComment prompt)
+        var images = new List<ImageItem> { MakeAiItem("a cat") }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        var rows = vm.ExifDetailRows!;
+        Assert.Single(rows);
+        Assert.Equal("Type", rows[0].Label);
+        Assert.Equal("AI Generated", rows[0].Value);
+    }
+
+    [Fact]
+    public void ExifDetailRows_ContainsAllAiFields_WhenAiDetailsPresent()
+    {
+        var ai = new AiDetails(
+            NegativePrompt: "ugly",
+            Seed:           "12345",
+            Model:          "model.safetensors",
+            VaeModel:       "vae.safetensors",
+            Sampler:        "euler_a",
+            Scheduler:      "karras",
+            GuidanceScale:  "7.5");
+        var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        var rows = vm.ExifDetailRows!;
+        Assert.Contains(rows, r => r.Label == "Model"     && r.Value == "model.safetensors");
+        Assert.Contains(rows, r => r.Label == "VAE"       && r.Value == "vae.safetensors");
+        Assert.Contains(rows, r => r.Label == "Sampler"   && r.Value == "euler_a");
+        Assert.Contains(rows, r => r.Label == "Scheduler" && r.Value == "karras");
+        Assert.Contains(rows, r => r.Label == "Guidance"  && r.Value == "7.5");
+        Assert.Contains(rows, r => r.Label == "Seed"      && r.Value == "12345");
+        Assert.Contains(rows, r => r.Label == "Negative"  && r.Value == "ugly");
+    }
+
+    [Fact]
+    public void ExifDetailRows_OmitsNullAiFields()
+    {
+        var ai = new AiDetails(
+            NegativePrompt: null,
+            Seed:           "42",
+            Model:          null,
+            VaeModel:       null,
+            Sampler:        "euler",
+            Scheduler:      null,
+            GuidanceScale:  null);
+        var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
+        var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
+
+        var rows = vm.ExifDetailRows!;
+        Assert.DoesNotContain(rows, r => r.Label == "Model");
+        Assert.DoesNotContain(rows, r => r.Label == "VAE");
+        Assert.DoesNotContain(rows, r => r.Label == "Scheduler");
+        Assert.DoesNotContain(rows, r => r.Label == "Guidance");
+        Assert.DoesNotContain(rows, r => r.Label == "Negative");
+        Assert.Contains(rows, r => r.Label == "Seed"    && r.Value == "42");
+        Assert.Contains(rows, r => r.Label == "Sampler" && r.Value == "euler");
+    }
 }

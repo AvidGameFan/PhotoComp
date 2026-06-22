@@ -1,3 +1,4 @@
+using System.Text.Json;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.Png;
@@ -37,7 +38,7 @@ public static class ImageLoaderService
             new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
             async (i, ct) =>
             {
-                var (dateTaken, width, height, prompt, exifCaption) =
+                var (dateTaken, width, height, prompt, exifCaption, exifDetails, aiDetails) =
                     await ReadMetadataAsync(files[i]).ConfigureAwait(false);
 
                 items[i] = new ImageItem(
@@ -47,7 +48,9 @@ public static class ImageLoaderService
                     Width:       width,
                     Height:      height,
                     Prompt:      prompt,
-                    ExifCaption: exifCaption);
+                    ExifCaption: exifCaption,
+                    ExifDetails: exifDetails,
+                    AiDetails:   aiDetails);
             });
 
         return items.OrderBy(i => i.DateTaken).ToList().AsReadOnly();
@@ -58,27 +61,29 @@ public static class ImageLoaderService
     public static IReadOnlyList<ImageItem> LoadImages(string folderPath)
         => LoadImagesAsync(folderPath).GetAwaiter().GetResult();
 
-    private static async Task<(DateTime dateTaken, int width, int height, string? prompt, string? exifCaption)>
+    private static async Task<(DateTime dateTaken, int width, int height, string? prompt, string? exifCaption, ExifDetails? exifDetails, AiDetails? aiDetails)>
         ReadMetadataAsync(string filePath)
     {
         // ImageMetadataReader has no async API — offload it so the calling thread is freed
         // during the synchronous disk read rather than blocking a pool thread.
-        var (dateTaken, width, height, prompt, exifCaption) =
+        var (dateTaken, width, height, prompt, exifCaption, exifDetails, aiDetails) =
             await Task.Run(() => ReadMetadata(filePath)).ConfigureAwait(false);
 
         // If the brute-force PNG fallback is needed, run it with true async I/O.
         if (prompt == null)
             prompt = await ExtractPromptFromPngBytesAsync(filePath).ConfigureAwait(false);
 
-        return (dateTaken, width, height, prompt, exifCaption);
+        return (dateTaken, width, height, prompt, exifCaption, exifDetails, aiDetails);
     }
 
-    private static (DateTime dateTaken, int width, int height, string? prompt, string? exifCaption) ReadMetadata(string filePath)
+    private static (DateTime dateTaken, int width, int height, string? prompt, string? exifCaption, ExifDetails? exifDetails, AiDetails? aiDetails) ReadMetadata(string filePath)
     {
         DateTime dateTaken = System.IO.File.GetLastWriteTime(filePath);
         int width = 0, height = 0;
         string? prompt = null;
         string? exifCaption = null;
+        ExifDetails? exifDetails = null;
+        AiDetails? aiDetails = null;
 
         try
         {
@@ -103,22 +108,36 @@ public static class ImageLoaderService
                 height = exifH;
             }
 
-            // SD prompt — PNG tEXt chunks
+            // SD prompt + AI fields — PNG tEXt chunks.
+            // MetadataExtractor 2.9.0 creates one PngDirectory per tEXt chunk; each stores
+            // TagTextualData as List<MetadataExtractor.KeyValuePair> (tEXt) or
+            // MetadataExtractor.KeyValuePair[] (iTXt/zTXt). Both implement IEnumerable.
             // Keywords by app: "parameters" (A1111/Forge), "prompt" (Easy Diffusion, ComfyUI),
             //                  "invokeai_metadata" (InvokeAI), "sd-metadata" (Easy Diffusion older JSON)
+            var pngFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var dir in directories.OfType<PngDirectory>())
             {
                 if (dir.GetObject(PngDirectory.TagTextualData) is
-                        List<KeyValuePair<string, string>> pairs)
+                        IEnumerable<MetadataExtractor.KeyValuePair> pairs)
                 {
                     foreach (var kv in pairs)
-                    {
-                        var value = ResolveSdPromptValue(kv.Key, kv.Value);
-                        if (value != null) { prompt = value; break; }
-                    }
+                        pngFields.TryAdd(kv.Key, kv.Value.ToString());
                 }
-                if (prompt != null) break;
             }
+
+            // If this is a ComfyUI workflow JSON, normalise its graph into flat fields.
+            ApplyComfyUiFields(pngFields);
+
+            foreach (var keyword in SdPromptKeywords)
+            {
+                if (pngFields.TryGetValue(keyword, out var raw))
+                {
+                    var resolved = ResolveSdPromptValue(keyword, raw);
+                    if (resolved != null) { prompt = resolved; break; }
+                }
+            }
+
+            aiDetails = BuildAiDetails(pngFields);
 
             // SD prompt — JPEG EXIF UserComment (AUTOMATIC1111 JPEG output)
             if (prompt == null && exifSub != null)
@@ -133,6 +152,7 @@ public static class ImageLoaderService
 
             // Camera EXIF caption (shown in overlay when there is no SD prompt)
             exifCaption = BuildExifCaption(exifIfd0, exifSub);
+            exifDetails = BuildExifDetails(exifIfd0, exifSub);
         }
         catch
         {
@@ -158,7 +178,7 @@ public static class ImageLoaderService
         // When called synchronously (unit tests via LoadImages), run it inline.
         prompt ??= ExtractPromptFromPngBytes(filePath);
 
-        return (dateTaken, width, height, prompt, exifCaption);
+        return (dateTaken, width, height, prompt, exifCaption, exifDetails, aiDetails);
     }
 
     // ── Camera EXIF caption ───────────────────────────────────────────────────────────────────
@@ -208,6 +228,199 @@ public static class ImageLoaderService
         // a bare camera name with no exposure data suggests a non-photo file.
         bool hasExposureData = iso != null || fNum != null || shutter != null || focal != null;
         return hasExposureData && parts.Count > 0 ? string.Join(" · ", parts) : null;
+    }
+
+    /// <summary>
+    /// Builds structured EXIF details for the expandable info overlay.
+    /// Returns null when no meaningful EXIF is available.
+    /// </summary>
+    private static ExifDetails? BuildExifDetails(ExifIfd0Directory? ifd0, ExifSubIfdDirectory? sub)
+    {
+        if (sub == null && ifd0 == null) return null;
+
+        var make        = ifd0?.GetDescription(ExifIfd0Directory.TagMake)?.Trim();
+        var model       = ifd0?.GetDescription(ExifIfd0Directory.TagModel)?.Trim();
+        var lensMake    = sub?.GetDescription(0xA433)?.Trim();   // LensMake
+        var lensModel   = sub?.GetDescription(0xA434)?.Trim();   // LensModel
+
+        var iso     = sub?.GetDescription(ExifSubIfdDirectory.TagIsoEquivalent);
+        var fNum    = sub?.GetDescription(ExifSubIfdDirectory.TagFNumber);
+        if (string.IsNullOrWhiteSpace(fNum))
+            fNum = sub?.GetDescription(ExifSubIfdDirectory.TagAperture);
+        var shutter = sub?.GetDescription(ExifSubIfdDirectory.TagExposureTime);
+        var focal   = sub?.GetDescription(ExifSubIfdDirectory.TagFocalLength);
+        var focal35 = sub?.GetDescription(0xA405);               // FocalLengthIn35mmFilm
+        var expBias = sub?.GetDescription(0x9204);               // ExposureBiasValue
+        var expProg = sub?.GetDescription(0x8822);               // ExposureProgram
+        var meter   = sub?.GetDescription(0x9207);               // MeteringMode
+        var flash   = sub?.GetDescription(0x9209);               // Flash
+        var wb      = sub?.GetDescription(0xA403);               // WhiteBalance
+
+        // Only return details when there is at least one photographic value.
+        bool hasData = model != null || iso != null || fNum != null || shutter != null
+                    || focal != null || lensModel != null;
+        if (!hasData) return null;
+
+        return new ExifDetails(
+            CameraMake:      make,
+            CameraModel:     model,
+            LensMake:        lensMake,
+            LensModel:       lensModel,
+            Iso:             iso,
+            Aperture:        fNum,
+            ShutterSpeed:    shutter,
+            FocalLength:     focal,
+            FocalLength35mm: focal35,
+            ExposureBias:    expBias,
+            ExposureProgram: expProg,
+            MeteringMode:    meter,
+            Flash:           flash,
+            WhiteBalance:    wb);
+    }
+
+    // ── AI generation details ─────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Builds structured AI generation details from the full set of PNG tEXt fields.
+    /// Returns null when none of the known AI fields are present.
+    /// </summary>
+    private static AiDetails? BuildAiDetails(Dictionary<string, string> fields)
+    {
+        if (fields.Count == 0) return null;
+
+        fields.TryGetValue("negative_prompt",             out var negPrompt);
+        fields.TryGetValue("seed",                        out var seed);
+        fields.TryGetValue("use_stable_diffusion_model",  out var model);
+        fields.TryGetValue("use_vae_model",               out var vaeModel);
+        fields.TryGetValue("sampler_name",                out var sampler);
+        fields.TryGetValue("scheduler_name",              out var scheduler);
+        fields.TryGetValue("guidance_scale",              out var guidanceScale);
+
+        bool hasData = negPrompt != null || seed != null || model != null
+                    || vaeModel != null || sampler != null || scheduler != null
+                    || guidanceScale != null;
+        if (!hasData) return null;
+
+        return new AiDetails(
+            NegativePrompt: string.IsNullOrWhiteSpace(negPrompt)    ? null : negPrompt,
+            Seed:           string.IsNullOrWhiteSpace(seed)          ? null : seed,
+            Model:          string.IsNullOrWhiteSpace(model)         ? null : model,
+            VaeModel:       string.IsNullOrWhiteSpace(vaeModel)      ? null : vaeModel,
+            Sampler:        string.IsNullOrWhiteSpace(sampler)       ? null : sampler,
+            Scheduler:      string.IsNullOrWhiteSpace(scheduler)     ? null : scheduler,
+            GuidanceScale:  string.IsNullOrWhiteSpace(guidanceScale) ? null : guidanceScale);
+    }
+
+    // ── ComfyUI workflow JSON normaliser ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Detects a ComfyUI workflow JSON in <c>fields["prompt"]</c> and, if found, rewrites
+    /// the dictionary with the extracted text values so the shared prompt-extraction and
+    /// <see cref="BuildAiDetails"/> paths work without further changes.
+    /// </summary>
+    private static void ApplyComfyUiFields(Dictionary<string, string> fields)
+    {
+        if (!fields.TryGetValue("prompt", out var raw)) return;
+
+        // ComfyUI JSON is a top-level object whose nodes each carry a "class_type" key.
+        var span = raw.AsSpan().TrimStart();
+        if (span.IsEmpty || span[0] != '{' || !raw.Contains("\"class_type\"", StringComparison.Ordinal))
+            return;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+
+            string? positiveRef = null, negativeRef = null;
+            string? seed = null, sampler = null, scheduler = null;
+            string? guidanceScale = null, model = null, vae = null;
+
+            // First pass: find the KSampler node — it wires positive/negative and holds settings.
+            foreach (var node in root.EnumerateObject())
+            {
+                if (!node.Value.TryGetProperty("class_type", out var ctEl)) continue;
+                var ct = ctEl.GetString();
+                if (ct is not ("KSampler" or "KSamplerAdvanced")) continue;
+
+                if (!node.Value.TryGetProperty("inputs", out var inp)) break;
+
+                if (inp.TryGetProperty("positive", out var pos) &&
+                    pos.ValueKind == JsonValueKind.Array && pos.GetArrayLength() > 0)
+                    positiveRef = pos[0].GetString();
+
+                if (inp.TryGetProperty("negative", out var neg) &&
+                    neg.ValueKind == JsonValueKind.Array && neg.GetArrayLength() > 0)
+                    negativeRef = neg[0].GetString();
+
+                if (inp.TryGetProperty("seed", out var seedEl))
+                    seed = seedEl.ValueKind == JsonValueKind.Number ? seedEl.GetRawText() : seedEl.GetString();
+                if (inp.TryGetProperty("sampler_name", out var sampEl))
+                    sampler = sampEl.GetString();
+                if (inp.TryGetProperty("scheduler", out var schedEl))
+                    scheduler = schedEl.GetString();
+                if (inp.TryGetProperty("cfg", out var cfgEl))
+                    guidanceScale = cfgEl.ValueKind == JsonValueKind.Number ? cfgEl.GetRawText() : cfgEl.GetString();
+
+                break; // use the first KSampler found
+            }
+
+            // Second pass: resolve positive/negative text and locate model/VAE nodes.
+            string? positiveText = null, negativeText = null;
+
+            foreach (var node in root.EnumerateObject())
+            {
+                if (!node.Value.TryGetProperty("class_type", out var ctEl)) continue;
+                var ct = ctEl.GetString();
+                if (!node.Value.TryGetProperty("inputs", out var inp)) continue;
+
+                if (ct == "CLIPTextEncode" && inp.TryGetProperty("text", out var textEl))
+                {
+                    var text = textEl.GetString();
+                    if (node.Name == positiveRef)
+                    {
+                        positiveText = text;
+                    }
+                    else if (node.Name == negativeRef)
+                    {
+                        negativeText = text;
+                    }
+                    else if (positiveRef is null || negativeRef is null)
+                    {
+                        // Fallback: identify by node title when no KSampler was found.
+                        var title = node.Value.TryGetProperty("_meta", out var meta) &&
+                                    meta.TryGetProperty("title", out var titleEl)
+                                    ? titleEl.GetString() ?? string.Empty : string.Empty;
+                        if (positiveRef is null && title.Contains("Positive", StringComparison.OrdinalIgnoreCase))
+                            positiveText ??= text;
+                        else if (negativeRef is null && title.Contains("Negative", StringComparison.OrdinalIgnoreCase))
+                            negativeText ??= text;
+                    }
+                }
+                else if (model is null && (ct == "UNETLoader" || ct == "CheckpointLoaderSimple"))
+                {
+                    model = inp.TryGetProperty("unet_name", out var unetEl) ? unetEl.GetString()
+                          : inp.TryGetProperty("ckpt_name",  out var ckptEl) ? ckptEl.GetString()
+                          : null;
+                }
+                else if (vae is null && ct == "VAELoader")
+                {
+                    if (inp.TryGetProperty("vae_name", out var vaeEl))
+                        vae = vaeEl.GetString();
+                }
+            }
+
+            // Overwrite the flat fields so the shared pipeline sees plain text values.
+            if (!string.IsNullOrWhiteSpace(positiveText))  fields["prompt"]                    = positiveText!;
+            if (!string.IsNullOrWhiteSpace(negativeText))  fields["negative_prompt"]            = negativeText!;
+            if (!string.IsNullOrWhiteSpace(seed))          fields["seed"]                       = seed!;
+            if (!string.IsNullOrWhiteSpace(sampler))       fields["sampler_name"]               = sampler!;
+            if (!string.IsNullOrWhiteSpace(scheduler))     fields["scheduler_name"]             = scheduler!;
+            if (!string.IsNullOrWhiteSpace(guidanceScale)) fields["guidance_scale"]             = guidanceScale!;
+            if (!string.IsNullOrWhiteSpace(model))         fields["use_stable_diffusion_model"] = model!;
+            if (!string.IsNullOrWhiteSpace(vae))           fields["use_vae_model"]              = vae!;
+        }
+        catch { /* malformed JSON — leave fields unchanged */ }
     }
 
     // ── SD prompt keyword list (checked in MetadataExtractor and brute-force paths) ──────────
