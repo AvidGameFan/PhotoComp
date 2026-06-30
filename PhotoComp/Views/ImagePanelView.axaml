@@ -12,6 +12,7 @@
 
     <UserControl.Resources>
         <conv:StringToBitmapConverter x:Key="StringToBitmapConverter"/>
+        <conv:XmlFormatterConverter x:Key="XmlFormatterConverter"/>
     </UserControl.Resources>
 
     <UserControl.Styles>
@@ -147,7 +148,7 @@
                 MaxWidth="420"
                 IsVisible="{Binding PromptText,
                             Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                ToolTip.Tip="{Binding PromptText}">
+                ToolTip.Tip="{Binding PromptText, Converter={StaticResource XmlFormatterConverter}}">
             <Border.ContextMenu>
                 <ContextMenu>
                     <MenuItem Header="Copy Prompt"
