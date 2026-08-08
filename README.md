@@ -1,5 +1,7 @@
 # PhotoComp
 
+![PhotoComp screenshot](PhotoComp.png)
+
 A desktop photo comparison tool for Windows and Linux. Open a folder of images and compare them side-by-side with synchronized zoom and pan. Mark favorites with a heart, then copy them — along with any sidecar files — to a destination folder. Delete unwanted images directly from the app, including their RAW originals and metadata sidecar files.
 
 ## Uses
@@ -33,7 +35,22 @@ For photos, the single-view is helpful for zooming in on details and removing ph
 
 ---
 
-## Running
+## EZ Install
+
+Download the latest release from the [Releases page](https://github.com/AvidGameFan/PhotoComp/releases).
+
+Most Windows users should grab **`PhotoComp-windows-x64-vX.Y.Z.zip`**. Extract the zip into a folder and run `PhotoComp.exe` — no installer needed.
+
+Linux users should grab **`PhotoComp-linux-x64-vX.Y.Z.zip`**, extract it, and run:
+
+```bash
+chmod +x PhotoComp
+./PhotoComp
+```
+
+---
+
+## Expert Install
 
 ### From the zip
 
@@ -44,6 +61,7 @@ The zip contains a folder of files — the app and the bundled .NET 10 runtime. 
 ```
 PhotoComp.exe
 ```
+An ARM version is also available, for those using Qualcomm tablets and laptops running Windows.
 
 **Linux** — extract `PhotoComp-linux-x64-vX.Y.Z.zip`, then:
 
