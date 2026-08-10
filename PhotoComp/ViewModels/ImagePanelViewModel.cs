@@ -24,6 +24,7 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(ExifDetailRows))]
     [NotifyCanExecuteChangedFor(nameof(CopyToClipboardCommand))]
     [NotifyCanExecuteChangedFor(nameof(CopyPromptCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ShowAiCriticCommand))]
     private int _currentIndex;
 
     [ObservableProperty] private bool _isExifVisible;
@@ -221,4 +222,19 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     /// Raised when the heart is toggled so MainWindowViewModel can refresh SelectedCount.
     /// </summary>
     public event EventHandler? HeartToggled;
+
+    /// <summary>
+    /// Injected by the view layer to show the AI Critic dialog for the current image.
+    /// Null-safe: no-op when not set (e.g. in unit tests).
+    /// </summary>
+    public Func<ImageItem, Task>? ShowAiCriticAsync { get; set; }
+
+    [RelayCommand(CanExecute = nameof(CanShowAiCritic))]
+    private async Task ShowAiCritic()
+    {
+        if (CurrentImage is null || ShowAiCriticAsync is null) return;
+        await ShowAiCriticAsync(CurrentImage);
+    }
+
+    private bool CanShowAiCritic() => CurrentImage is not null;
 }

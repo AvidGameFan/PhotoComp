@@ -26,6 +26,7 @@ For photos, the single-view is helpful for zooming in on details and removing ph
 - **Single/dual view toggle** — switch between side-by-side and single-panel view from the toolbar
 - **Busy indicator** — a loading overlay and wait cursor appear while a large folder is being scanned
 - **Thumbnail Selector Dialog** — view all images as thumbnails for easy selection
+- **AI Critic** — send the current image to a local or cloud vision LLM for artifact detection, composition feedback, prompt suggestions, and camera settings advice
 
 ---
 
@@ -137,6 +138,49 @@ Each panel shows a small overlay in the bottom-left corner with the image's pixe
 ```
 
 The bottom-right corner displays camera EXIF info for photos, or embedded prompt info for AI generated images.
+
+---
+
+## AI Critic
+
+PhotoComp can send the currently displayed image to a vision-capable LLM for analysis and return tailored feedback directly in the app.
+
+![PhotoComp AI Critic](PhotoComp AI Critic.png)
+
+### Setup
+
+1. Click **⚙ AI Critic** in the toolbar.
+2. Fill in the three fields and click **Save**:
+
+| Field | Description |
+|-------|-------------|
+| **API Base URL** | Base address of any OpenAI-compatible server — e.g. `http://localhost:11434` (Ollama), `http://localhost:1234` (LM Studio), `https://api.openai.com` (OpenAI) |
+| **API Key** | Authorization key (Bearer token). Leave blank for local servers that don't require authentication. |
+| **Model Name** | A vision-capable model, e.g. `llava`, `gemma3`, `gpt-4o`, `moondream`. The model **must** support image input. (Can leave blank for LM Studio.) |
+
+Settings are saved to `%AppData%\PhotoComp\settings.json` and restored on next launch.
+
+> If leaving Model Name blank for LM Studio, you still need to manually load the model within LM Studio.  A "vision" model is required, which usually requires a separate mmproj file to be copied into the LLM's model folder (in addition to the model itself).
+
+### Running a critique
+
+Click the **🔍 Critic** button in the top-right overlay of either panel. The report dialog opens immediately and shows "Analyzing image…" while the model works (allow up to ~2 minutes).
+
+PhotoComp automatically detects the image type and chooses the appropriate prompt:
+
+**For AI-generated images** (images that contain embedded Stable Diffusion or similar metadata):
+- Checks for common generation artifacts: extra fingers, facial anomalies, anatomy errors, melting objects, garbled text, lighting inconsistencies, etc.
+- Reports issues with a severity rating (Minor / Moderate / Severe)
+- Suggests terms to **add to the positive prompt** and **negative prompt**
+- Recommends changes to CFG scale, sampler, steps, or other parameters
+
+**For photographs** (images with EXIF camera data, or no AI metadata):
+- Critiques composition, exposure, focus, lighting, colour, and noise
+- Considers the actual EXIF values (ISO, aperture, shutter speed, focal length) when commenting on settings choices
+- Suggests specific **editing improvements** such as cropping, straightening, dodging/burning, and colour grading
+- Notes whether camera settings were well-matched to the scene
+
+Images larger than 2 megapixels are automatically downscaled before being sent to keep request size reasonable.
 
 ---
 

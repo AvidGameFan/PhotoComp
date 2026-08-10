@@ -1,0 +1,148 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:PhotoComp.Models"
+        x:Class="PhotoComp.Views.AiCriticDialog"
+        Title="AI Critic Report"
+        Width="680" MinHeight="300" MaxHeight="700"
+        CanResize="True"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Window.Styles>
+        <!-- Section headers -->
+        <Style Selector="TextBlock.section-header">
+            <Setter Property="FontSize"     Value="13"/>
+            <Setter Property="FontWeight"   Value="SemiBold"/>
+            <Setter Property="Margin"       Value="0,12,0,4"/>
+        </Style>
+        <!-- Copyable text areas -->
+        <Style Selector="TextBox.copy-box">
+            <Setter Property="IsReadOnly"   Value="True"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="MaxHeight"    Value="80"/>
+            <Setter Property="FontFamily"   Value="Consolas,Menlo,monospace"/>
+            <Setter Property="FontSize"     Value="12"/>
+        </Style>
+        <!-- Suggestion paragraphs -->
+        <Style Selector="TextBlock.suggestion">
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="FontSize"     Value="12"/>
+            <Setter Property="LineHeight"   Value="18"/>
+        </Style>
+    </Window.Styles>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="20,16" Spacing="4">
+
+            <!-- ── Loading state ── -->
+            <StackPanel x:Name="LoadingPanel" Spacing="10" HorizontalAlignment="Center"
+                        VerticalAlignment="Center" Margin="0,40">
+                <TextBlock Text="Analyzing image…" FontSize="14"
+                           HorizontalAlignment="Center" Opacity="0.8"/>
+                <TextBlock Text="This may take up to 2–3 minutes." FontSize="11"
+                           HorizontalAlignment="Center" Opacity="0.5"/>
+            </StackPanel>
+
+            <!-- ── Error state ── -->
+            <Border x:Name="ErrorPanel" IsVisible="False"
+                    Background="#33FF4444" CornerRadius="4" Padding="12,8" Margin="0,4">
+                <TextBlock x:Name="ErrorText" TextWrapping="Wrap" FontSize="12"
+                           Foreground="#FF8080"/>
+            </Border>
+
+            <!-- ── Results ── -->
+            <StackPanel x:Name="ResultPanel" IsVisible="False" Spacing="4">
+
+                <!-- Header: title + severity badge -->
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,4">
+                    <TextBlock Text="AI Critic Report" FontSize="15" FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+                    <Border x:Name="SeverityBadge" CornerRadius="10" Padding="8,3">
+                        <TextBlock x:Name="SeverityText" FontSize="11" Foreground="White"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Summary -->
+                <TextBlock x:Name="SummaryText" TextWrapping="Wrap" FontSize="12"
+                           LineHeight="18" Opacity="0.85" Margin="0,0,0,8"/>
+
+                <!-- Issues table header -->
+                <TextBlock Classes="section-header" Text="Issues"/>
+                <Border Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
+                        CornerRadius="4" Padding="0,2">
+                    <Grid ColumnDefinitions="120,*,90" Margin="8,4">
+                        <TextBlock Grid.Column="0" Text="Area"       FontWeight="SemiBold" FontSize="11"/>
+                        <TextBlock Grid.Column="1" Text="Description" FontWeight="SemiBold" FontSize="11"/>
+                        <TextBlock Grid.Column="2" Text="Severity"    FontWeight="SemiBold" FontSize="11"/>
+                    </Grid>
+                </Border>
+                <ItemsControl x:Name="IssuesList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:AiCriticIssue">
+                            <Grid ColumnDefinitions="120,*,90" Margin="8,3">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Area}"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           TextWrapping="Wrap" VerticalAlignment="Top"/>
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Description}"
+                                           FontSize="11" TextWrapping="Wrap"/>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding Severity}"
+                                           FontSize="11"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock x:Name="NoIssuesText" Text="No issues detected ✓"
+                           FontSize="11" Opacity="0.6" Margin="8,3"
+                           IsVisible="False"/>
+
+                <!-- ── AI image sections ── -->
+                <StackPanel x:Name="AiPanel" IsVisible="False" Spacing="4">
+
+                    <TextBlock Classes="section-header" Text="Add to Positive Prompt"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" x:Name="PositiveBox" Classes="copy-box"/>
+                        <Button  Grid.Column="1" x:Name="CopyPositiveBtn"
+                                 Content="Copy" Margin="6,0,0,0" VerticalAlignment="Top"/>
+                    </Grid>
+
+                    <TextBlock Classes="section-header" Text="Add to Negative Prompt"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBox Grid.Column="0" x:Name="NegativeBox" Classes="copy-box"/>
+                        <Button  Grid.Column="1" x:Name="CopyNegativeBtn"
+                                 Content="Copy" Margin="6,0,0,0" VerticalAlignment="Top"/>
+                    </Grid>
+
+                    <TextBlock Classes="section-header" x:Name="ParamHeader"
+                               Text="Parameter Suggestions" IsVisible="False"/>
+                    <TextBlock Classes="suggestion" x:Name="ParamText" IsVisible="False"/>
+
+                </StackPanel>
+
+                <!-- ── Photo sections ── -->
+                <StackPanel x:Name="PhotoPanel" IsVisible="False" Spacing="4">
+
+                    <TextBlock Classes="section-header" x:Name="EditingHeader"
+                               Text="Editing Suggestions" IsVisible="False"/>
+                    <TextBlock Classes="suggestion"     x:Name="EditingText" IsVisible="False"/>
+
+                    <TextBlock Classes="section-header" x:Name="CameraHeader"
+                               Text="Camera Settings Notes" IsVisible="False"/>
+                    <TextBlock Classes="suggestion"     x:Name="CameraText" IsVisible="False"/>
+
+                </StackPanel>
+
+            </StackPanel>
+
+            <!-- Close button — always at the bottom -->
+            <Button x:Name="CloseButton" Content="  Close  "
+                    HorizontalAlignment="Right" Margin="0,16,0,0"
+                    IsCancel="True"/>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</Window>

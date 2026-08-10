@@ -77,17 +77,28 @@
                     ToolTip.Tip="Next (→)">►</Button>
         </Border>
 
-        <!-- Heart button (top-right) — red glyph when hearted, white when not -->
-        <Border HorizontalAlignment="Right" VerticalAlignment="Top"
-                Background="#CC000000" CornerRadius="4" Margin="0,6,8,0">
-            <Button Command="{Binding ToggleHeartCommand}"
-                    Background="Transparent" BorderThickness="0"
-                    Foreground="White" Padding="8,4" FontSize="22"
-                    ToolTip.Tip="Toggle favourite">
-                <TextBlock Text="{Binding HeartGlyph}"
-                           Classes.hearted="{Binding IsCurrentHearted}"/>
-            </Button>
-        </Border>
+        <!-- Top-right overlay: AI Critic + Heart buttons -->
+        <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Orientation="Horizontal" Spacing="4" Margin="0,6,8,0">
+
+            <Border Background="#CC000000" CornerRadius="4">
+                <Button Command="{Binding ShowAiCriticCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="White" Padding="8,4" FontSize="13"
+                        ToolTip.Tip="AI Critic — analyze this image">🔍 Critic</Button>
+            </Border>
+
+            <Border Background="#CC000000" CornerRadius="4">
+                <Button Command="{Binding ToggleHeartCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Foreground="White" Padding="8,4" FontSize="22"
+                        ToolTip.Tip="Toggle favourite">
+                    <TextBlock Text="{Binding HeartGlyph}"
+                               Classes.hearted="{Binding IsCurrentHearted}"/>
+                </Button>
+            </Border>
+
+        </StackPanel>
 
         <!-- Delete button (top-left) -->
         <Border HorizontalAlignment="Left" VerticalAlignment="Top"

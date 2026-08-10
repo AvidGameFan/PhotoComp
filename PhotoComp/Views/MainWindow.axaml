@@ -104,6 +104,14 @@
                         🎞 Filmstrip
                     </Button>
 
+                <Separator/>
+
+                <Button x:Name="AiCriticSettingsButton"
+                        Padding="6,4"
+                        ToolTip.Tip="AI Critic Settings — configure API URL, key and model">
+                    ⚙ AI Critic
+                </Button>
+
                 </StackPanel>
 
                 <TextBlock Grid.Column="1"

@@ -1,0 +1,43 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="PhotoComp.Views.AiCriticSettingsDialog"
+        Title="AI Critic Settings"
+        SizeToContent="WidthAndHeight"
+        MinWidth="440" MaxWidth="600"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <StackPanel Margin="20,16" Spacing="14">
+
+        <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7"
+                   Text="Configure the OpenAI-compatible vision LLM used to critique images.&#10;Examples: http://localhost:11434 (Ollama), http://localhost:1234 (LM Studio), https://api.openai.com (OpenAI)"/>
+
+        <Grid ColumnDefinitions="130,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
+
+            <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="API Base URL:"/>
+            <TextBox   Grid.Row="0" Grid.Column="1" x:Name="UrlBox"
+                       PlaceholderText="http://localhost:1234"
+                       ToolTip.Tip="Base URL — /v1/chat/completions will be appended automatically"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Text="API Key:"/>
+            <TextBox   Grid.Row="1" Grid.Column="1" x:Name="KeyBox"
+                       PasswordChar="●"
+                       PlaceholderText="sk-… (leave empty for local LLMs)"
+                       ToolTip.Tip="Authorization key; leave blank for local servers"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Model Name:"/>
+            <TextBox   Grid.Row="2" Grid.Column="1" x:Name="ModelBox"
+                       PlaceholderText="llava, gpt-4o, gemma3, …"
+                       ToolTip.Tip="Must be a vision-capable model"/>
+
+        </Grid>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="CancelButton" Content="  Cancel  " IsCancel="True"/>
+            <Button x:Name="SaveButton"   Content="  Save  "/>
+        </StackPanel>
+
+    </StackPanel>
+
+</Window>

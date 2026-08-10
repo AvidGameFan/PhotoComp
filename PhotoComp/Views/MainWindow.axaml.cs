@@ -6,6 +6,8 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
+using PhotoComp.Models;
+using PhotoComp.Services;
 using PhotoComp.ViewModels;
 
 namespace PhotoComp.Views;
@@ -29,6 +31,7 @@ public partial class MainWindow : Window
             RoutingStrategies.Bubble);
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent,     OnDrop);
+        AiCriticSettingsButton.Click += async (_, _) => await OpenAiCriticSettingsAsync();
     }
 
     private static void OnDragOver(object? sender, DragEventArgs e)
@@ -144,9 +147,57 @@ public partial class MainWindow : Window
     private void WirePanelPicker(ImagePanelViewModel? panel)
     {
         if (panel is null) return;
-        panel.ShowPickerAsync = idx => ShowPickerDialogAsync(panel, idx);
-        panel.CopyImageAsync  = CopyImageToClipboardAsync;
-        panel.CopyTextAsync   = CopyTextToClipboardAsync;
+        panel.ShowPickerAsync    = idx => ShowPickerDialogAsync(panel, idx);
+        panel.CopyImageAsync     = CopyImageToClipboardAsync;
+        panel.CopyTextAsync      = CopyTextToClipboardAsync;
+        panel.ShowAiCriticAsync  = ShowAiCriticDialogAsync;
+    }
+
+    private async Task ShowAiCriticDialogAsync(ImageItem image)
+    {
+        var settings = SettingsService.LoadSettings();
+        if (string.IsNullOrWhiteSpace(settings.ApiUrl))
+        {
+            await ShowAlertAsync("AI Critic",
+                "Please configure the AI Critic settings first (⚙ AI Critic Settings in the toolbar).");
+            return;
+        }
+
+        var dialog = new AiCriticDialog();
+        // Show the dialog immediately in loading state, then run the analysis.
+        var analyzeTask = Task.Run(() => AiCriticService.AnalyzeAsync(image, settings));
+        // Fire-and-forget into the dialog then populate/error once done.
+        _ = analyzeTask.ContinueWith(t =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (t.IsFaulted)
+                    dialog.ShowError(FriendlyError(t.Exception?.InnerException));
+                else
+                    dialog.ShowReport(t.Result);
+            });
+        });
+        await dialog.ShowDialog(this);
+    }
+
+    private async Task OpenAiCriticSettingsAsync()
+    {
+        var dlg = new AiCriticSettingsDialog();
+        await dlg.ShowDialog(this);
+        if (dlg.Saved)
+            SettingsService.SaveSettings(dlg.BuildSettings());
+    }
+
+    private static string FriendlyError(Exception? ex)
+    {
+        if (ex is null) return "Analysis failed.";
+        var msg = ex.Message;
+        if (msg.Contains("401"))      return "Authentication failed — check the API key.";
+        if (msg.Contains("404"))      return "Endpoint not found — check the API URL.";
+        if (msg.Contains("cancel") ||
+            msg.Contains("abort"))    return "Request timed out after 2.5 minutes.";
+        if (msg.Contains("non-JSON")) return msg; // include the raw content for debugging
+        return $"Analysis failed: {msg}";
     }
 
     private async Task CopyTextToClipboardAsync(string text)
