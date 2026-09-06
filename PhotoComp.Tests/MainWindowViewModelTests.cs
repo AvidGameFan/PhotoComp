@@ -256,6 +256,51 @@ public class MainWindowViewModelTests : IDisposable
         Assert.Equal(1, vm.SelectedCount);
     }
 
+    // ── Compare ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void CompareImages_CannotExecute_WhenPanelsAreNull()
+    {
+        var vm = new MainWindowViewModel();
+        Assert.False(vm.CompareImagesCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task CompareImages_CanExecute_WhenPanelsHaveImages()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        WriteJpeg("b.jpg", DateTime.Now);
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        Assert.True(vm.CompareImagesCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task CompareImages_InvokesShowCompareAsync_WhenExecuted()
+    {
+        WriteJpeg("a.jpg", DateTime.Now);
+        WriteJpeg("b.jpg", DateTime.Now);
+        var vm = MakeVm();
+
+        ImageItem? compareLeft = null;
+        ImageItem? compareRight = null;
+        vm.ShowCompareAsync = (left, right) =>
+        {
+            compareLeft = left;
+            compareRight = right;
+            return Task.CompletedTask;
+        };
+
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        await vm.CompareImagesCommand.ExecuteAsync(null);
+
+        Assert.NotNull(compareLeft);
+        Assert.NotNull(compareRight);
+        Assert.Equal("a.jpg", compareLeft!.FileName);
+        Assert.Equal("b.jpg", compareRight!.FileName);
+    }
+
     [Fact]
     public async Task HasSelections_FalseAfterUnheartingImage()
     {

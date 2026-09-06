@@ -96,6 +96,12 @@
                     <TextBlock Text="{Binding SingleViewButtonLabel}"/>
                 </Button>
 
+                <Button Command="{Binding CompareImagesCommand}"
+                        Padding="6,4"
+                        ToolTip.Tip="Compare left and right images in a full-screen split slider view">
+                    ↔ Compare
+                </Button>
+
                 <Separator/>
 
                     <Button Command="{Binding ToggleFilmstripCommand}"

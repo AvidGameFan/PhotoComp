@@ -16,6 +16,8 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     public Func<string, string, Task>? ShowAlertAsync { get; set; }
     /// <summary>Shows a yes/no confirmation dialog. Returns false when null (safe default).</summary>
     public Func<string, string, string, Task<bool>>? ConfirmAsync { get; set; }
+    /// <summary>Shows the full-screen compare window for two images. Injected by the View; null-safe (no-ops in tests).</summary>
+    public Func<ImageItem, ImageItem, Task>? ShowCompareAsync { get; set; }
     public ZoomState SharedZoom { get; } = new();
     private readonly HashSet<string> _selectedPaths = [];
 
@@ -30,12 +32,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PushLeftToRightCommand))]
     [NotifyCanExecuteChangedFor(nameof(PushRightToLeftCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CompareImagesCommand))]
     [NotifyPropertyChangedFor(nameof(IsLeftPanelActive))]
     private ImagePanelViewModel? _leftPanel;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PushLeftToRightCommand))]
     [NotifyCanExecuteChangedFor(nameof(PushRightToLeftCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CompareImagesCommand))]
     [NotifyPropertyChangedFor(nameof(IsRightPanelActive))]
     private ImagePanelViewModel? _rightPanel;
     [ObservableProperty] private bool _isLoading;
@@ -202,6 +206,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private bool CanPushPanels => LeftPanel is not null && RightPanel is not null;
 
+    public bool CanCompareImages => LeftPanel?.CurrentImage is not null && RightPanel?.CurrentImage is not null;
+
+    [RelayCommand(CanExecute = nameof(CanCompareImages))]
+    private async Task CompareImages()
+    {
+        if (LeftPanel?.CurrentImage is null || RightPanel?.CurrentImage is null) return;
+        if (ShowCompareAsync is not null)
+        {
+            await ShowCompareAsync(LeftPanel.CurrentImage, RightPanel.CurrentImage);
+        }
+    }
+
     [RelayCommand(CanExecute = nameof(CanPushPanels))]
     private void PushLeftToRight()
     {
@@ -219,6 +235,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     private ImagePanelViewModel CreatePanel(int startIndex)
     {
         var vm = new ImagePanelViewModel(Images, SharedZoom, _selectedPaths, startIndex);
+        vm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(ImagePanelViewModel.CurrentIndex) or nameof(ImagePanelViewModel.CurrentImage))
+                CompareImagesCommand.NotifyCanExecuteChanged();
+        };
         vm.HeartToggled += (_, _) =>
         {
             _favoritesAreSaved = false;

@@ -82,6 +82,7 @@ public partial class MainWindow : Window
         vm.PickDestFolderAsync   = PickFolderAsync;
         vm.ShowAlertAsync        = ShowAlertAsync;
         vm.ConfirmAsync          = ConfirmAsync;
+        vm.ShowCompareAsync      = ShowCompareDialogAsync;
         vm.PropertyChanged += OnVmPropertyChanged;
         _lastVm = vm;
     }
@@ -142,6 +143,12 @@ public partial class MainWindow : Window
         var dialog = new ConfirmDialog(title, message, confirmLabel);
         await dialog.ShowDialog(this);
         return dialog.Result;
+    }
+
+    private async Task ShowCompareDialogAsync(ImageItem leftImage, ImageItem rightImage)
+    {
+        var dialog = new CompareDialog(leftImage, rightImage);
+        await dialog.ShowDialog(this);
     }
 
     private void WirePanelPicker(ImagePanelViewModel? panel)
