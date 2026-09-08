@@ -115,14 +115,21 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
                 if (!string.IsNullOrEmpty(ai?.VaeModel))        rows.Add(new ExifRow("VAE",       ai.VaeModel!));
                 if (!string.IsNullOrEmpty(ai?.Sampler))         rows.Add(new ExifRow("Sampler",   ai.Sampler!));
                 if (!string.IsNullOrEmpty(ai?.Scheduler))       rows.Add(new ExifRow("Scheduler", ai.Scheduler!));
+                if (!string.IsNullOrEmpty(ai?.Steps))            rows.Add(new ExifRow("Steps",     ai.Steps!));
                 if (!string.IsNullOrEmpty(ai?.GuidanceScale))   rows.Add(new ExifRow("Guidance",  ai.GuidanceScale!));
                 if (!string.IsNullOrEmpty(ai?.Seed))            rows.Add(new ExifRow("Seed",      ai.Seed!));
-                if (!string.IsNullOrEmpty(ai?.NegativePrompt))  rows.Add(new ExifRow("Negative",  ai.NegativePrompt!));
+                if (!string.IsNullOrEmpty(ai?.NegativePrompt))  rows.Add(new ExifRow("Negative",  TruncateNegativePrompt(ai.NegativePrompt!)));
             }
 
             return rows.Count > 0 ? rows : null;
         }
     }
+
+    // Roughly a few wrapped lines at the EXIF overlay's fixed width.
+    private const int NegativePromptMaxChars = 160;
+
+    private static string TruncateNegativePrompt(string text) =>
+        text.Length <= NegativePromptMaxChars ? text : text[..NegativePromptMaxChars].TrimEnd() + "…";
 
     /// <summary>
     /// Text shown in the bottom-right overlay: SD generation prompt when present,

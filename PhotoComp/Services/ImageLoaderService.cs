@@ -295,10 +295,12 @@ public static class ImageLoaderService
         fields.TryGetValue("sampler_name",                out var sampler);
         fields.TryGetValue("scheduler_name",              out var scheduler);
         fields.TryGetValue("guidance_scale",              out var guidanceScale);
+        if (!fields.TryGetValue("num_inference_steps", out var steps))
+            fields.TryGetValue("steps", out steps);
 
         bool hasData = negPrompt != null || seed != null || model != null
                     || vaeModel != null || sampler != null || scheduler != null
-                    || guidanceScale != null;
+                    || guidanceScale != null || steps != null;
         if (!hasData) return null;
 
         return new AiDetails(
@@ -308,7 +310,8 @@ public static class ImageLoaderService
             VaeModel:       string.IsNullOrWhiteSpace(vaeModel)      ? null : vaeModel,
             Sampler:        string.IsNullOrWhiteSpace(sampler)       ? null : sampler,
             Scheduler:      string.IsNullOrWhiteSpace(scheduler)     ? null : scheduler,
-            GuidanceScale:  string.IsNullOrWhiteSpace(guidanceScale) ? null : guidanceScale);
+            GuidanceScale:  string.IsNullOrWhiteSpace(guidanceScale) ? null : guidanceScale,
+            Steps:          string.IsNullOrWhiteSpace(steps)         ? null : steps);
     }
 
     // ── ComfyUI workflow JSON normaliser ─────────────────────────────────────────────────────
@@ -334,7 +337,7 @@ public static class ImageLoaderService
 
             string? positiveRef = null, negativeRef = null;
             string? seed = null, sampler = null, scheduler = null;
-            string? guidanceScale = null, model = null, vae = null;
+            string? guidanceScale = null, model = null, vae = null, steps = null;
 
             // First pass: find the KSampler node — it wires positive/negative and holds settings.
             foreach (var node in root.EnumerateObject())
@@ -361,6 +364,8 @@ public static class ImageLoaderService
                     scheduler = schedEl.GetString();
                 if (inp.TryGetProperty("cfg", out var cfgEl))
                     guidanceScale = cfgEl.ValueKind == JsonValueKind.Number ? cfgEl.GetRawText() : cfgEl.GetString();
+                if (inp.TryGetProperty("steps", out var stepsEl))
+                    steps = stepsEl.ValueKind == JsonValueKind.Number ? stepsEl.GetRawText() : stepsEl.GetString();
 
                 break; // use the first KSampler found
             }
@@ -419,6 +424,7 @@ public static class ImageLoaderService
             if (!string.IsNullOrWhiteSpace(guidanceScale)) fields["guidance_scale"]             = guidanceScale!;
             if (!string.IsNullOrWhiteSpace(model))         fields["use_stable_diffusion_model"] = model!;
             if (!string.IsNullOrWhiteSpace(vae))           fields["use_vae_model"]              = vae!;
+            if (!string.IsNullOrWhiteSpace(steps))         fields["num_inference_steps"]        = steps!;
         }
         catch { /* malformed JSON — leave fields unchanged */ }
     }

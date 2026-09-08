@@ -193,6 +193,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDualView))]
     [NotifyPropertyChangedFor(nameof(SingleViewButtonLabel))]
+    [NotifyCanExecuteChangedFor(nameof(CompareImagesCommand))]
     private bool _isSingleView;
 
     public bool IsDualView => !IsSingleView;
@@ -206,7 +207,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     private bool CanPushPanels => LeftPanel is not null && RightPanel is not null;
 
-    public bool CanCompareImages => LeftPanel?.CurrentImage is not null && RightPanel?.CurrentImage is not null;
+    public bool CanCompareImages =>
+        IsDualView
+        && LeftPanel?.CurrentImage is not null
+        && RightPanel?.CurrentImage is not null
+        && !string.Equals(LeftPanel.CurrentImage.FileName, RightPanel.CurrentImage.FileName, StringComparison.OrdinalIgnoreCase);
 
     [RelayCommand(CanExecute = nameof(CanCompareImages))]
     private async Task CompareImages()

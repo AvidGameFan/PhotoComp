@@ -498,7 +498,8 @@ public class ImagePanelViewModelTests
             VaeModel:       "vae.safetensors",
             Sampler:        "euler_a",
             Scheduler:      "karras",
-            GuidanceScale:  "7.5");
+            GuidanceScale:  "7.5",
+            Steps:          "20");
         var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
         var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
 
@@ -507,6 +508,7 @@ public class ImagePanelViewModelTests
         Assert.Contains(rows, r => r.Label == "VAE"       && r.Value == "vae.safetensors");
         Assert.Contains(rows, r => r.Label == "Sampler"   && r.Value == "euler_a");
         Assert.Contains(rows, r => r.Label == "Scheduler" && r.Value == "karras");
+        Assert.Contains(rows, r => r.Label == "Steps"     && r.Value == "20");
         Assert.Contains(rows, r => r.Label == "Guidance"  && r.Value == "7.5");
         Assert.Contains(rows, r => r.Label == "Seed"      && r.Value == "12345");
         Assert.Contains(rows, r => r.Label == "Negative"  && r.Value == "ugly");
@@ -522,7 +524,8 @@ public class ImagePanelViewModelTests
             VaeModel:       null,
             Sampler:        "euler",
             Scheduler:      null,
-            GuidanceScale:  null);
+            GuidanceScale:  null,
+            Steps:          null);
         var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
         var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
 

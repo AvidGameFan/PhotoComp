@@ -63,16 +63,16 @@
             <Setter Property="Width" Value="80"/>
         </Style>
         <Style Selector="Button#CopySelectedButton:pointerover TextBlock.label, Button#CopySelectedButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="92"/>
+            <Setter Property="Width" Value="110"/>
         </Style>
         <Style Selector="Button#MoveSelectedButton:pointerover TextBlock.label, Button#MoveSelectedButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="92"/>
+            <Setter Property="Width" Value="110"/>
         </Style>
         <Style Selector="Button#ResetZoomButton:pointerover TextBlock.label, Button#ResetZoomButton:focus-within TextBlock.label">
             <Setter Property="Width" Value="80"/>
         </Style>
         <Style Selector="Button#ToggleSingleViewButton:pointerover TextBlock.label, Button#ToggleSingleViewButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="80"/>
+            <Setter Property="Width" Value="120"/>
         </Style>
         <Style Selector="Button#CompareButton:pointerover TextBlock.label, Button#CompareButton:focus-within TextBlock.label">
             <Setter Property="Width" Value="60"/>
@@ -162,6 +162,7 @@
 
                 <Button x:Name="CompareButton" Classes="icon"
                         Command="{Binding CompareImagesCommand}"
+                        IsVisible="{Binding IsDualView}"
                         ToolTip.Tip="Compare left and right images in a full-screen split slider view">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="↔"/>

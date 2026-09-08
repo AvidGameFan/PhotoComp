@@ -8,4 +8,5 @@ public sealed record AiDetails(
     string? VaeModel,
     string? Sampler,
     string? Scheduler,
-    string? GuidanceScale);
+    string? GuidanceScale,
+    string? Steps);
