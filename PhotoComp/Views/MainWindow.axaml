@@ -33,21 +33,18 @@
         </Style>
 
         <!--
-            Compact icon toolbar buttons: only the icon glyph is shown by default;
-            the descriptive label expands into view on hover/focus so the bar fits
-            without maximizing the window. Each button needs its own :pointerover
-            rule because the expanded width is per-label.
+            Icon toolbar buttons show icon + label by default. When the window is too
+            narrow to fit everything, MainWindow.axaml.cs adds the "compact" class to
+            individual buttons (lowest priority first) to collapse them to icon-only.
         -->
         <Style Selector="Button.icon">
             <Setter Property="Padding" Value="8,6"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
         <Style Selector="Button.icon TextBlock.label">
-            <Setter Property="Width" Value="0"/>
-            <Setter Property="Opacity" Value="0"/>
-            <Setter Property="Margin" Value="0"/>
-            <Setter Property="ClipToBounds" Value="True"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="ClipToBounds" Value="True"/>
             <Setter Property="Transitions">
                 <Transitions>
                     <DoubleTransition Property="Width" Duration="0:0:0.12"/>
@@ -55,33 +52,17 @@
                 </Transitions>
             </Setter>
         </Style>
-        <Style Selector="Button.icon:pointerover TextBlock.label, Button.icon:focus-within TextBlock.label">
-            <Setter Property="Margin" Value="6,0,0,0"/>
+        <Style Selector="Button.icon.compact TextBlock.label">
+            <Setter Property="Width" Value="0"/>
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="Margin" Value="0"/>
+        </Style>
+
+        <!-- Hovering (or focusing) an icon-only button peeks its label back into view. -->
+        <Style Selector="Button.icon.compact:pointerover TextBlock.label, Button.icon.compact:focus-within TextBlock.label">
+            <Setter Property="Width" Value="NaN"/>
             <Setter Property="Opacity" Value="1"/>
-        </Style>
-        <Style Selector="Button#OpenFolderButton:pointerover TextBlock.label, Button#OpenFolderButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="80"/>
-        </Style>
-        <Style Selector="Button#CopySelectedButton:pointerover TextBlock.label, Button#CopySelectedButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="110"/>
-        </Style>
-        <Style Selector="Button#MoveSelectedButton:pointerover TextBlock.label, Button#MoveSelectedButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="110"/>
-        </Style>
-        <Style Selector="Button#ResetZoomButton:pointerover TextBlock.label, Button#ResetZoomButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="80"/>
-        </Style>
-        <Style Selector="Button#ToggleSingleViewButton:pointerover TextBlock.label, Button#ToggleSingleViewButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="120"/>
-        </Style>
-        <Style Selector="Button#CompareButton:pointerover TextBlock.label, Button#CompareButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="60"/>
-        </Style>
-        <Style Selector="Button#FilmstripButton:pointerover TextBlock.label, Button#FilmstripButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="66"/>
-        </Style>
-        <Style Selector="Button#AiCriticSettingsButton:pointerover TextBlock.label, Button#AiCriticSettingsButton:focus-within TextBlock.label">
-            <Setter Property="Width" Value="66"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
         </Style>
     </Window.Styles>
 
@@ -91,21 +72,22 @@
     <DockPanel>
 
         <!-- ── Toolbar ─────────────────────────────────────────────── -->
-        <Border DockPanel.Dock="Top"
+        <Border x:Name="ToolbarBorder"
+                DockPanel.Dock="Top"
                 Background="{DynamicResource SystemControlBackgroundChromeMediumBrush}"
                 BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="8,4">
             <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" ClipToBounds="True">
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                <StackPanel x:Name="ToolbarButtonsPanel" Grid.Column="0" Orientation="Horizontal" Spacing="4">
 
                 <Button x:Name="OpenFolderButton" Classes="icon"
                         Command="{Binding LoadFolderCommand}"
                         ToolTip.Tip="Open a folder of images">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="📁"/>
-                        <TextBlock Classes="label" Text="Open Folder"/>
+                        <TextBlock x:Name="OpenFolderLabel" Classes="label" Text="Open Folder"/>
                     </StackPanel>
                 </Button>
 
@@ -117,7 +99,7 @@
                         ToolTip.Tip="Copy selected images to another folder">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="💾"/>
-                        <TextBlock Classes="label" Text="Copy Selected"/>
+                        <TextBlock x:Name="CopySelectedLabel" Classes="label" Text="Copy Selected"/>
                         <TextBlock Text="{Binding SelectedCount, StringFormat=' ({0})'}" VerticalAlignment="Center" Opacity="0.8"/>
                     </StackPanel>
                 </Button>
@@ -128,7 +110,7 @@
                         ToolTip.Tip="Move selected images to another folder (files are removed from source)">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="📦"/>
-                        <TextBlock Classes="label" Text="Move Selected"/>
+                        <TextBlock x:Name="MoveSelectedLabel" Classes="label" Text="Move Selected"/>
                         <TextBlock Text="{Binding SelectedCount, StringFormat=' ({0})'}" VerticalAlignment="Center" Opacity="0.8"/>
                     </StackPanel>
                 </Button>
@@ -145,7 +127,7 @@
                         ToolTip.Tip="Reset zoom to 100%">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⊙"/>
-                        <TextBlock Classes="label" Text="Reset Zoom"/>
+                        <TextBlock x:Name="ResetZoomLabel" Classes="label" Text="Reset Zoom"/>
                     </StackPanel>
                 </Button>
 
@@ -155,8 +137,8 @@
                         Command="{Binding ToggleSingleViewCommand}"
                         ToolTip.Tip="Toggle between single-panel and dual-panel view">
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="⧉"/>
-                        <TextBlock Classes="label" Text="{Binding SingleViewButtonLabel}"/>
+                        <TextBlock Text="{Binding SingleViewButtonIcon}"/>
+                        <TextBlock x:Name="ToggleSingleViewLabel" Classes="label" Text="{Binding SingleViewButtonLabel}"/>
                     </StackPanel>
                 </Button>
 
@@ -166,7 +148,7 @@
                         ToolTip.Tip="Compare left and right images in a full-screen split slider view">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="↔"/>
-                        <TextBlock Classes="label" Text="Compare"/>
+                        <TextBlock x:Name="CompareLabel" Classes="label" Text="Compare"/>
                     </StackPanel>
                 </Button>
 
@@ -177,7 +159,7 @@
                         ToolTip.Tip="Toggle filmstrip">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🎞"/>
-                        <TextBlock Classes="label" Text="Filmstrip"/>
+                        <TextBlock x:Name="FilmstripLabel" Classes="label" Text="Filmstrip"/>
                     </StackPanel>
                 </Button>
 
@@ -187,7 +169,7 @@
                         ToolTip.Tip="AI Critic Settings — configure API URL, key and model">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="⚙"/>
-                        <TextBlock Classes="label" Text="AI Critic"/>
+                        <TextBlock x:Name="AiCriticLabel" Classes="label" Text="AI Critic"/>
                     </StackPanel>
                 </Button>
 

@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -17,6 +19,16 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _lastVm;
     private ImagePanelViewModel? _filmstripScrollPanel;
 
+    /// <summary>
+    /// Toolbar buttons in the order they should collapse to icon-only when the
+    /// window is too narrow to show every label (least important first).
+    /// </summary>
+    private Button[] _toolbarShrinkPriority = Array.Empty<Button>();
+    private Dictionary<Button, TextBlock> _toolbarLabels = new();
+    private readonly Dictionary<Button, double> _toolbarLabelCost = new();
+    private double _toolbarBaseWidth;
+    private bool _toolbarMetricsCached;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -32,6 +44,95 @@ public partial class MainWindow : Window
         AddHandler(DragDrop.DragOverEvent, OnDragOver);
         AddHandler(DragDrop.DropEvent,     OnDrop);
         AiCriticSettingsButton.Click += async (_, _) => await OpenAiCriticSettingsAsync();
+
+        _toolbarShrinkPriority = new[]
+        {
+            AiCriticSettingsButton,
+            FilmstripButton,
+            CompareButton,
+            ResetZoomButton,
+            MoveSelectedButton,
+            CopySelectedButton,
+            ToggleSingleViewButton,
+            OpenFolderButton,
+        };
+        _toolbarLabels = new Dictionary<Button, TextBlock>
+        {
+            [OpenFolderButton]        = OpenFolderLabel,
+            [CopySelectedButton]      = CopySelectedLabel,
+            [MoveSelectedButton]      = MoveSelectedLabel,
+            [ResetZoomButton]         = ResetZoomLabel,
+            [ToggleSingleViewButton]  = ToggleSingleViewLabel,
+            [CompareButton]           = CompareLabel,
+            [FilmstripButton]         = FilmstripLabel,
+            [AiCriticSettingsButton]  = AiCriticLabel,
+        };
+
+        Loaded += (_, _) => CacheToolbarMetrics();
+        ToolbarBorder.SizeChanged += (_, _) => UpdateToolbarCompactState();
+    }
+
+    /// <summary>
+    /// Measures the toolbar once, before any button has ever been collapsed, to learn
+    /// the base (icon-only) row width and each button's label width. Compaction is then
+    /// decided by arithmetic instead of re-measuring a live row whose label widths may
+    /// be mid-transition, which previously made compaction unreliable.
+    /// </summary>
+    private void CacheToolbarMetrics()
+    {
+        if (_toolbarMetricsCached) return;
+
+        var infinite = new Size(double.PositiveInfinity, double.PositiveInfinity);
+        ToolbarButtonsPanel.Measure(infinite);
+        var fullyExpandedWidth = ToolbarButtonsPanel.DesiredSize.Width;
+
+        double totalLabelCost = 0;
+        foreach (var (button, label) in _toolbarLabels)
+        {
+            label.Measure(infinite);
+            var cost = label.DesiredSize.Width + label.Margin.Left;
+            _toolbarLabelCost[button] = cost;
+            totalLabelCost += cost;
+        }
+
+        _toolbarBaseWidth = fullyExpandedWidth - totalLabelCost;
+        _toolbarMetricsCached = true;
+
+        UpdateToolbarCompactState();
+    }
+
+    /// <summary>
+    /// Collapses toolbar buttons to icon-only, starting with the lowest-priority
+    /// button (AI Critic settings), until the button row plus a small reserve for the
+    /// folder path fits within the available toolbar width. Expands them back as space
+    /// becomes available.
+    /// </summary>
+    private void UpdateToolbarCompactState()
+    {
+        if (!_toolbarMetricsCached) return;
+
+        // Reserve enough width for a short excerpt of the folder path, not its full length.
+        const double reservedForPath = 90;
+        var available = ToolbarBorder.Bounds.Width - ToolbarBorder.Padding.Left - ToolbarBorder.Padding.Right - reservedForPath;
+        if (available <= 0) return;
+
+        var budget = available - _toolbarBaseWidth;
+
+        // Walk highest-priority buttons first, expanding whatever still fits in the
+        // budget; everything else (lowest priority first) collapses to icon-only.
+        foreach (var button in _toolbarShrinkPriority.Reverse())
+        {
+            var cost = _toolbarLabelCost.GetValueOrDefault(button);
+            if (budget >= cost)
+            {
+                button.Classes.Remove("compact");
+                budget -= cost;
+            }
+            else
+            {
+                button.Classes.Add("compact");
+            }
+        }
     }
 
     private static void OnDragOver(object? sender, DragEventArgs e)

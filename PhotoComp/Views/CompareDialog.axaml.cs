@@ -72,7 +72,6 @@ public partial class CompareDialog : Window
             LeftImage.Source = StringToBitmapConverter.Instance.Convert(
                 _leftImage.FilePath, typeof(Bitmap), null, CultureInfo.InvariantCulture) as Bitmap;
             LeftFileNameText.Text = _leftImage.FileName;
-            LeftBadgeText.Text = $"◄ Left: {_leftImage.FileName}";
         }
 
         if (_rightImage is not null)
@@ -80,7 +79,6 @@ public partial class CompareDialog : Window
             RightImage.Source = StringToBitmapConverter.Instance.Convert(
                 _rightImage.FilePath, typeof(Bitmap), null, CultureInfo.InvariantCulture) as Bitmap;
             RightFileNameText.Text = _rightImage.FileName;
-            RightBadgeText.Text = $"Right: {_rightImage.FileName} ►";
         }
     }
 

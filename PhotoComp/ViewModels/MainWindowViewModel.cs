@@ -192,12 +192,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsDualView))]
+    [NotifyPropertyChangedFor(nameof(SingleViewButtonIcon))]
     [NotifyPropertyChangedFor(nameof(SingleViewButtonLabel))]
     [NotifyCanExecuteChangedFor(nameof(CompareImagesCommand))]
     private bool _isSingleView;
 
     public bool IsDualView => !IsSingleView;
-    public string SingleViewButtonLabel => IsSingleView ? "⊞ Dual View" : "⊟ Single View";
+    public string SingleViewButtonIcon => IsSingleView ? "⊞" : "⊟";
+    public string SingleViewButtonLabel => IsSingleView ? "Dual View" : "Single View";
 
     [RelayCommand]
     private void ToggleSingleView() => IsSingleView = !IsSingleView;

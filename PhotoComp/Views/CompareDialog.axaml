@@ -88,16 +88,6 @@
                 <Image x:Name="LeftImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
 
-            <!-- Top-Left Badge -->
-            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12" Padding="8,4" Background="#CC111111" CornerRadius="4" IsHitTestVisible="False">
-                <TextBlock x:Name="LeftBadgeText" Foreground="#88C0D0" FontSize="12" FontWeight="SemiBold" Text="◄ Left: Image 1"/>
-            </Border>
-
-            <!-- Top-Right Badge -->
-            <Border HorizontalAlignment="Right" VerticalAlignment="Top" Margin="12" Padding="8,4" Background="#CC111111" CornerRadius="4" IsHitTestVisible="False">
-                <TextBlock x:Name="RightBadgeText" Foreground="#EBCB8B" FontSize="12" FontWeight="SemiBold" Text="Right: Image 2 ►"/>
-            </Border>
-
             <!-- Layer 3: Divider Line & Drag Handle -->
             <Grid x:Name="DividerLine"
                   HorizontalAlignment="Left"

@@ -235,6 +235,7 @@ public static class AiCriticService
             if (!string.IsNullOrEmpty(ai.NegativePrompt))  sb.AppendLine($"Negative prompt: {ai.NegativePrompt}");
             if (!string.IsNullOrEmpty(ai.Model))            sb.AppendLine($"Model: {ai.Model}");
             if (!string.IsNullOrEmpty(ai.VaeModel))         sb.AppendLine($"VAE: {ai.VaeModel}");
+            if (!string.IsNullOrEmpty(ai.TextEncoders))     sb.AppendLine($"Text encoders: {ai.TextEncoders}");
             if (!string.IsNullOrEmpty(ai.Sampler))          sb.AppendLine($"Sampler: {ai.Sampler}");
             if (!string.IsNullOrEmpty(ai.Scheduler))        sb.AppendLine($"Scheduler: {ai.Scheduler}");
             if (!string.IsNullOrEmpty(ai.GuidanceScale))    sb.AppendLine($"Guidance scale: {ai.GuidanceScale}");

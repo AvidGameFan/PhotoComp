@@ -499,7 +499,9 @@ public class ImagePanelViewModelTests
             Sampler:        "euler_a",
             Scheduler:      "karras",
             GuidanceScale:  "7.5",
-            Steps:          "20");
+            Steps:          "20",
+            Loras:          "Flux/style_lora_v1",
+            TextEncoders:   null);
         var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
         var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
 
@@ -509,6 +511,7 @@ public class ImagePanelViewModelTests
         Assert.Contains(rows, r => r.Label == "Sampler"   && r.Value == "euler_a");
         Assert.Contains(rows, r => r.Label == "Scheduler" && r.Value == "karras");
         Assert.Contains(rows, r => r.Label == "Steps"     && r.Value == "20");
+        Assert.Contains(rows, r => r.Label == "LoRA"      && r.Value == "Flux/style_lora_v1");
         Assert.Contains(rows, r => r.Label == "Guidance"  && r.Value == "7.5");
         Assert.Contains(rows, r => r.Label == "Seed"      && r.Value == "12345");
         Assert.Contains(rows, r => r.Label == "Negative"  && r.Value == "ugly");
@@ -525,7 +528,9 @@ public class ImagePanelViewModelTests
             Sampler:        "euler",
             Scheduler:      null,
             GuidanceScale:  null,
-            Steps:          null);
+            Steps:          null,
+            Loras:          null,
+            TextEncoders:   null);
         var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
         var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
 
@@ -535,6 +540,7 @@ public class ImagePanelViewModelTests
         Assert.DoesNotContain(rows, r => r.Label == "Scheduler");
         Assert.DoesNotContain(rows, r => r.Label == "Guidance");
         Assert.DoesNotContain(rows, r => r.Label == "Negative");
+        Assert.DoesNotContain(rows, r => r.Label == "LoRA");
         Assert.Contains(rows, r => r.Label == "Seed"    && r.Value == "42");
         Assert.Contains(rows, r => r.Label == "Sampler" && r.Value == "euler");
     }

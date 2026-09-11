@@ -9,4 +9,6 @@ public sealed record AiDetails(
     string? Sampler,
     string? Scheduler,
     string? GuidanceScale,
-    string? Steps);
+    string? Steps,
+    string? Loras,
+    string? TextEncoders);

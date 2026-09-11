@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.Png;
@@ -127,6 +128,11 @@ public static class ImageLoaderService
 
             // If this is a ComfyUI workflow JSON, normalise its graph into flat fields.
             ApplyComfyUiFields(pngFields);
+
+            // Newer ComfyUI metadata nodes (and A1111/Forge) also emit a plain-text
+            // "parameters" block alongside/instead of the JSON graph — prefer it when
+            // present since it's far simpler to parse reliably than the graph.
+            ApplyA1111ParametersFields(pngFields);
 
             foreach (var keyword in SdPromptKeywords)
             {
@@ -297,10 +303,14 @@ public static class ImageLoaderService
         fields.TryGetValue("guidance_scale",              out var guidanceScale);
         if (!fields.TryGetValue("num_inference_steps", out var steps))
             fields.TryGetValue("steps", out steps);
+        fields.TryGetValue("use_lora_model",              out var loraRaw);
+        var loras = ResolveLoras(loraRaw);
+        fields.TryGetValue("text_encoders",                out var textEncoders);
 
         bool hasData = negPrompt != null || seed != null || model != null
                     || vaeModel != null || sampler != null || scheduler != null
-                    || guidanceScale != null || steps != null;
+                    || guidanceScale != null || steps != null || loras != null
+                    || textEncoders != null;
         if (!hasData) return null;
 
         return new AiDetails(
@@ -311,7 +321,36 @@ public static class ImageLoaderService
             Sampler:        string.IsNullOrWhiteSpace(sampler)       ? null : sampler,
             Scheduler:      string.IsNullOrWhiteSpace(scheduler)     ? null : scheduler,
             GuidanceScale:  string.IsNullOrWhiteSpace(guidanceScale) ? null : guidanceScale,
-            Steps:          string.IsNullOrWhiteSpace(steps)         ? null : steps);
+            Steps:          string.IsNullOrWhiteSpace(steps)         ? null : steps,
+            Loras:          loras,
+            TextEncoders:   string.IsNullOrWhiteSpace(textEncoders)  ? null : textEncoders);
+    }
+
+    /// <summary>
+    /// Parses Easy Diffusion's <c>use_lora_model</c> field, which may be a single file path,
+    /// a JSON array of file paths, or absent/null/"None" when no LoRA was used.
+    /// </summary>
+    private static string? ResolveLoras(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw) || raw.Equals("null", StringComparison.OrdinalIgnoreCase)
+            || raw.Equals("none", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        if (raw.TrimStart().StartsWith('['))
+        {
+            try
+            {
+                var names = JsonSerializer.Deserialize<string?[]>(raw);
+                var joined = string.Join(", ", (names ?? []).Where(n => !string.IsNullOrWhiteSpace(n)));
+                return string.IsNullOrWhiteSpace(joined) ? null : joined;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
+        return raw;
     }
 
     // ── ComfyUI workflow JSON normaliser ─────────────────────────────────────────────────────
@@ -415,6 +454,13 @@ public static class ImageLoaderService
                 }
             }
 
+            // LoRA nodes vary widely by version/custom-node (classic LoraLoader has a flat
+            // inputs.lora_name; newer stacked loaders nest an array of {lora_name, on, ...}
+            // objects), so walk the whole graph for any "lora_name" value instead of
+            // targeting a specific node shape.
+            var loraNames = new List<string>();
+            CollectLoraNames(root, loraNames);
+
             // Overwrite the flat fields so the shared pipeline sees plain text values.
             if (!string.IsNullOrWhiteSpace(positiveText))  fields["prompt"]                    = positiveText!;
             if (!string.IsNullOrWhiteSpace(negativeText))  fields["negative_prompt"]            = negativeText!;
@@ -425,8 +471,212 @@ public static class ImageLoaderService
             if (!string.IsNullOrWhiteSpace(model))         fields["use_stable_diffusion_model"] = model!;
             if (!string.IsNullOrWhiteSpace(vae))           fields["use_vae_model"]              = vae!;
             if (!string.IsNullOrWhiteSpace(steps))         fields["num_inference_steps"]        = steps!;
+            if (loraNames.Count > 0)
+                fields["use_lora_model"] = JsonSerializer.Serialize(loraNames.Distinct().ToArray());
         }
         catch { /* malformed JSON — leave fields unchanged */ }
+    }
+
+    /// <summary>
+    /// Recursively collects every string value of a JSON property named "lora_name",
+    /// wherever it appears in the graph. An object carrying an explicit "on": false
+    /// sibling (newer stacked lora loaders) is treated as disabled and skipped.
+    /// </summary>
+    private static void CollectLoraNames(JsonElement element, List<string> names)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                if (element.TryGetProperty("on", out var onEl) && onEl.ValueKind == JsonValueKind.False)
+                    return;
+
+                foreach (var prop in element.EnumerateObject())
+                {
+                    if (prop.NameEquals("lora_name") && prop.Value.ValueKind == JsonValueKind.String)
+                    {
+                        var name = prop.Value.GetString();
+                        if (!string.IsNullOrWhiteSpace(name) && !name.Equals("None", StringComparison.OrdinalIgnoreCase))
+                            names.Add(name);
+                    }
+                    else
+                    {
+                        CollectLoraNames(prop.Value, names);
+                    }
+                }
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                    CollectLoraNames(item, names);
+                break;
+        }
+    }
+
+    // ── A1111-style "parameters" text block ───────────────────────────────────────────────────
+    // Emitted by AUTOMATIC1111/Forge, and by newer ComfyUI metadata-saving nodes as a more
+    // reliable alternative to the JSON workflow graph: a positive prompt, an optional
+    // "Negative prompt:" line, then one comma-separated "Key: Value, Key: Value, ..." line.
+
+    /// <summary>
+    /// Parses <c>fields["parameters"]</c> (if present) into the same flat field names used
+    /// elsewhere, overwriting it with just the positive prompt text so the shared
+    /// prompt-extraction path returns clean text instead of the whole block.
+    /// </summary>
+    private static void ApplyA1111ParametersFields(Dictionary<string, string> fields)
+    {
+        if (!fields.TryGetValue("parameters", out var raw) || string.IsNullOrWhiteSpace(raw))
+            return;
+
+        var lines = raw.Replace("\r\n", "\n").Split('\n');
+
+        const string negPrefix = "Negative prompt:";
+        int negIdx = Array.FindIndex(lines, l => l.StartsWith(negPrefix, StringComparison.OrdinalIgnoreCase));
+        int paramsIdx = Array.FindIndex(lines, l => l.Contains("Steps:", StringComparison.OrdinalIgnoreCase));
+
+        string positivePrompt;
+        string? negativePrompt = null;
+
+        if (negIdx >= 0)
+        {
+            positivePrompt = string.Join('\n', lines[..negIdx]).Trim();
+            var negEnd = paramsIdx > negIdx ? paramsIdx : lines.Length;
+            negativePrompt = (lines[negIdx][negPrefix.Length..] + " " +
+                string.Join(' ', lines[(negIdx + 1)..negEnd])).Trim();
+        }
+        else
+        {
+            positivePrompt = string.Join('\n', lines[..(paramsIdx >= 0 ? paramsIdx : lines.Length)]).Trim();
+        }
+
+        if (!string.IsNullOrWhiteSpace(positivePrompt))
+            fields["parameters"] = positivePrompt;
+        if (!string.IsNullOrWhiteSpace(negativePrompt))
+            fields["negative_prompt"] = negativePrompt;
+
+        if (paramsIdx < 0) return;
+
+        var paramsLine = string.Join(' ', lines[paramsIdx..]).Trim();
+        var loraByIndex = new Dictionary<int, (string? Name, string? Strength)>();
+        var clipByIndex = new Dictionary<int, string>();
+        foreach (var (key, value) in SplitParametersLine(paramsLine))
+        {
+            var nameMatch = LoraModelNameRegex.Match(key);
+            if (nameMatch.Success)
+            {
+                var idx = int.Parse(nameMatch.Groups[1].Value);
+                loraByIndex[idx] = (value, loraByIndex.GetValueOrDefault(idx).Strength);
+                continue;
+            }
+            var strengthMatch = LoraStrengthModelRegex.Match(key);
+            if (strengthMatch.Success)
+            {
+                var idx = int.Parse(strengthMatch.Groups[1].Value);
+                loraByIndex[idx] = (loraByIndex.GetValueOrDefault(idx).Name, value);
+                continue;
+            }
+            var clipMatch = ClipModelNameRegex.Match(key);
+            if (clipMatch.Success)
+            {
+                clipByIndex[int.Parse(clipMatch.Groups[1].Value)] = value;
+                continue;
+            }
+
+            switch (key.ToLowerInvariant())
+            {
+                case "steps":
+                    fields["num_inference_steps"] = value;
+                    break;
+                case "sampler":
+                    fields["sampler_name"] = value;
+                    break;
+                case "schedule type":
+                case "scheduler":
+                    fields["scheduler_name"] = value;
+                    break;
+                case "cfg scale":
+                case "guidance scale":
+                    fields["guidance_scale"] = value;
+                    break;
+                case "seed":
+                    fields["seed"] = value;
+                    break;
+                case "model":
+                    fields["use_stable_diffusion_model"] = value;
+                    break;
+                case "vae":
+                    fields["use_vae_model"] = value;
+                    break;
+                case "lora hashes":
+                    var loraNames = value
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(entry => entry.Split(':', 2)[0].Trim())
+                        .Where(n => n.Length > 0)
+                        .ToArray();
+                    if (loraNames.Length > 0)
+                        fields["use_lora_model"] = JsonSerializer.Serialize(loraNames);
+                    break;
+            }
+        }
+
+        if (loraByIndex.Count > 0)
+        {
+            var loras = loraByIndex.OrderBy(kv => kv.Key)
+                .Where(kv => !string.IsNullOrWhiteSpace(kv.Value.Name))
+                .Select(kv => kv.Value.Strength != null ? $"{kv.Value.Name} ({kv.Value.Strength})" : kv.Value.Name)
+                .ToArray();
+            if (loras.Length > 0)
+                fields["use_lora_model"] = JsonSerializer.Serialize(loras);
+        }
+
+        if (clipByIndex.Count > 0)
+        {
+            var clipNames = clipByIndex.OrderBy(kv => kv.Key)
+                .Select(kv => kv.Value)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToArray();
+            if (clipNames.Length > 0)
+                fields["text_encoders"] = string.Join(", ", clipNames);
+        }
+    }
+
+    // Matches per-slot LoRA fields emitted by newer Forge/reForge builds, e.g.
+    // "Lora_0 Model name: foo.safetensors" and "Lora_0 Strength model: 0.8".
+    private static readonly Regex LoraModelNameRegex = new(@"^lora_(\d+) model name$", RegexOptions.IgnoreCase);
+    private static readonly Regex LoraStrengthModelRegex = new(@"^lora_(\d+) strength model$", RegexOptions.IgnoreCase);
+    // Matches per-slot text-encoder fields, e.g. "CLIP_1 Model name: foo".
+    private static readonly Regex ClipModelNameRegex = new(@"^clip_(\d+) model name$", RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Splits an A1111 "Key: Value, Key: Value, ..." line into pairs, respecting double-quoted
+    /// values so embedded commas (e.g. inside <c>Lora hashes: "a: 1, b: 2"</c>) aren't treated
+    /// as separators.
+    /// </summary>
+    private static IEnumerable<(string Key, string Value)> SplitParametersLine(string line)
+    {
+        var tokens = new List<string>();
+        var sb = new System.Text.StringBuilder();
+        bool inQuotes = false;
+        foreach (var c in line)
+        {
+            if (c == '"') { inQuotes = !inQuotes; continue; }
+            if (c == ',' && !inQuotes)
+            {
+                tokens.Add(sb.ToString());
+                sb.Clear();
+                continue;
+            }
+            sb.Append(c);
+        }
+        if (sb.Length > 0) tokens.Add(sb.ToString());
+
+        foreach (var token in tokens)
+        {
+            var idx = token.IndexOf(':');
+            if (idx < 0) continue;
+            var key = token[..idx].Trim();
+            var value = token[(idx + 1)..].Trim();
+            if (key.Length > 0 && value.Length > 0)
+                yield return (key, value);
+        }
     }
 
     // ── SD prompt keyword list (checked in MetadataExtractor and brute-force paths) ──────────

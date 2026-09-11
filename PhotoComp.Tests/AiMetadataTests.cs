@@ -177,6 +177,95 @@ public sealed class AiMetadataTests : IDisposable
         Assert.Equal("Qwen_Image-VAE.safetensors", item.AiDetails?.VaeModel);
     }
 
+    [Fact]
+    public void ComfyUi_ClassicLoraLoader_IsInAiDetails()
+    {
+        const string json = """
+            {"1": {"inputs": {"lora_name": "Flux/style_v1.safetensors", "strength_model": 1.0, "model": ["2", 0]}, "class_type": "LoraLoader", "_meta": {"title": "Load LoRA"}}}
+            """;
+        var item = LoadSinglePng("comfy_lora.png", ("prompt", json));
+
+        Assert.Equal("Flux/style_v1.safetensors", item.AiDetails?.Loras);
+    }
+
+    [Fact]
+    public void ComfyUi_StackedLoraLoader_CollectsEnabledEntriesOnly()
+    {
+        const string json = """
+            {"1": {"inputs": {"loras": [{"lora_name": "Flux/enabled_one.safetensors", "on": true, "strength": 0.8}, {"lora_name": "Flux/disabled.safetensors", "on": false, "strength": 0.5}, {"lora_name": "Flux/enabled_two.safetensors", "on": true, "strength": 1.0}]}, "class_type": "Power Lora Loader (rgthree)", "_meta": {"title": "Power Lora Loader"}}}
+            """;
+        var item = LoadSinglePng("comfy_lora_stack.png", ("prompt", json));
+
+        Assert.Equal("Flux/enabled_one.safetensors, Flux/enabled_two.safetensors", item.AiDetails?.Loras);
+    }
+
+    // ── A1111-style "parameters" text block (also emitted by newer ComfyUI metadata nodes) ────
+
+    private const string A1111Parameters =
+        "masterpiece, best quality, 1girl, katana\n" +
+        "Negative prompt: worst quality, low quality\n" +
+        "Steps: 20, Sampler: Euler a, Schedule type: Karras, CFG scale: 7, Seed: 123456789, " +
+        "Size: 512x768, Model hash: abc123, Model: someModel, Denoising strength: 0.7, " +
+        "Lora hashes: \"styleLora: aaa111, poseLora: bbb222\", Version: v1.7.0";
+
+    [Fact]
+    public void A1111Parameters_PromptIsSplitFromNegativeAndParams()
+    {
+        var item = LoadSinglePng("a1111.png", ("parameters", A1111Parameters));
+
+        Assert.Equal("masterpiece, best quality, 1girl, katana", item.Prompt);
+        Assert.Equal("worst quality, low quality", item.AiDetails?.NegativePrompt);
+    }
+
+    [Fact]
+    public void A1111Parameters_StepsSamplerSchedulerCfgSeedModel_AreInAiDetails()
+    {
+        var item = LoadSinglePng("a1111_full.png", ("parameters", A1111Parameters));
+
+        Assert.Equal("20",         item.AiDetails?.Steps);
+        Assert.Equal("Euler a",    item.AiDetails?.Sampler);
+        Assert.Equal("Karras",     item.AiDetails?.Scheduler);
+        Assert.Equal("7",          item.AiDetails?.GuidanceScale);
+        Assert.Equal("123456789",  item.AiDetails?.Seed);
+        Assert.Equal("someModel",  item.AiDetails?.Model);
+    }
+
+    [Fact]
+    public void A1111Parameters_LoraHashes_AreParsedAsLoraNames()
+    {
+        var item = LoadSinglePng("a1111_lora.png", ("parameters", A1111Parameters));
+
+        Assert.Equal("styleLora, poseLora", item.AiDetails?.Loras);
+    }
+
+    [Fact]
+    public void A1111Parameters_ForgeLoraSlots_AreParsedWithStrength()
+    {
+        const string parameters =
+            "masterpiece, best quality\n" +
+            "Steps: 20, Sampler: Euler a, Seed: 123456789, Model: someModel, " +
+            "Lora_0 Model name: MyLora.safetensors, Lora_0 Strength model: 0.8";
+
+        var item = LoadSinglePng("a1111_lora_slots.png", ("parameters", parameters));
+
+        Assert.Equal("MyLora.safetensors (0.8)", item.AiDetails?.Loras);
+    }
+
+    [Fact]
+    public void A1111Parameters_VaeAndClipTextEncoders_AreParsed()
+    {
+        const string parameters =
+            "masterpiece, best quality\n" +
+            "Steps: 20, Sampler: Euler a, Seed: 123456789, Model: someModel, " +
+            "VAE: qwen_image_vae.safetensors, " +
+            "CLIP_1 Model name: qwen3vl_4b_bf16, CLIP_2 Model name: MyTextEncoder";
+
+        var item = LoadSinglePng("a1111_vae_clip.png", ("parameters", parameters));
+
+        Assert.Equal("qwen_image_vae.safetensors", item.AiDetails?.VaeModel);
+        Assert.Equal("qwen3vl_4b_bf16, MyTextEncoder", item.AiDetails?.TextEncoders);
+    }
+
     // ── Easy Diffusion flat tEXt fields ───────────────────────────────────────────────────────
 
     [Fact]

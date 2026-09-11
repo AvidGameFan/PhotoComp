@@ -529,7 +529,8 @@ public class MainWindowViewModelTests : IDisposable
     public void InitialState_SingleViewButtonLabel_ShowsSingleViewOption()
     {
         var vm = new MainWindowViewModel();
-        Assert.Equal("⊟ Single View", vm.SingleViewButtonLabel);
+        Assert.Equal("⊟", vm.SingleViewButtonIcon);
+        Assert.Equal("Single View", vm.SingleViewButtonLabel);
     }
 
     [Fact]
@@ -557,10 +558,12 @@ public class MainWindowViewModelTests : IDisposable
         var vm = new MainWindowViewModel();
 
         vm.ToggleSingleViewCommand.Execute(null);
-        Assert.Equal("⊞ Dual View", vm.SingleViewButtonLabel);
+        Assert.Equal("⊞", vm.SingleViewButtonIcon);
+        Assert.Equal("Dual View", vm.SingleViewButtonLabel);
 
         vm.ToggleSingleViewCommand.Execute(null);
-        Assert.Equal("⊟ Single View", vm.SingleViewButtonLabel);
+        Assert.Equal("⊟", vm.SingleViewButtonIcon);
+        Assert.Equal("Single View", vm.SingleViewButtonLabel);
     }
 
     [Fact]
