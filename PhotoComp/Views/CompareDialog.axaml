@@ -46,7 +46,7 @@
 
                 <!-- Close Button & Hint -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                    <TextBlock Text="(Press ESC to close)" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
+                    <TextBlock Text="Double-click to zoom, drag to pan  •  ESC to close" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
                     <Button x:Name="CloseButton" Content="🗙 Close" Padding="10,4" Background="#333333" Foreground="White" CornerRadius="4"/>
                 </StackPanel>
             </Grid>
@@ -72,46 +72,48 @@
                     <TextBlock Text="100% Right" FontSize="11" Foreground="#888888" VerticalAlignment="Center"/>
                 </Grid>
 
-                <TextBlock Grid.Column="2" x:Name="PercentText" Text="Split: 50%" FontSize="12" Foreground="#CCCCCC" VerticalAlignment="Center" Width="80" TextAlignment="Right"/>
+                <TextBlock Grid.Column="2" x:Name="PercentText" Text="Split: 50%" FontSize="12" Foreground="#CCCCCC" VerticalAlignment="Center" Width="170" TextAlignment="Right"/>
             </Grid>
         </Border>
 
         <!-- Main Image Comparison Area -->
         <Grid x:Name="ImageContainer" Background="#0A0A0A" ClipToBounds="True">
             <!-- Layer 1: Right Image (Bottom layer) -->
-            <Image x:Name="RightImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            <Image x:Name="RightImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0,0"/>
 
             <!-- Layer 2: Left Image (Top layer). Wrapped so the clip rect is expressed
                  in ImageContainer's coordinate space rather than the (possibly letterboxed
                  and centered) Image element's own bounds. -->
             <Grid x:Name="LeftImageClip" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                <Image x:Name="LeftImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Image x:Name="LeftImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0,0"/>
             </Grid>
 
-            <!-- Layer 3: Divider Line & Drag Handle -->
+            <!-- Layer 3: Divider Line & Drag Handle. Hit-testable (unlike the rest of the
+                 image area) so it can always be grabbed to reposition the split, even
+                 while zoomed in and panning elsewhere in the image area. -->
             <Grid x:Name="DividerLine"
                   HorizontalAlignment="Left"
                   VerticalAlignment="Stretch"
                   Width="20"
                   Margin="-10,0,0,0"
                   Background="Transparent"
-                  IsHitTestVisible="False">
+                  Cursor="SizeWestEast">
                 <!-- Vertical Line -->
-                <Border Width="2" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#FFFFFF">
+                <Border Width="2" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="#FFFFFF" IsHitTestVisible="False">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="4" Color="Black" OffsetX="0" OffsetY="0" Opacity="0.8"/>
                     </Border.Effect>
                 </Border>
 
                 <!-- Center Drag Handle Pill -->
-                <Border Width="36" Height="36" CornerRadius="18"
+                <Border x:Name="DividerHandle" Width="36" Height="36" CornerRadius="18"
                         HorizontalAlignment="Center" VerticalAlignment="Center"
                         Background="#DD222222" BorderBrush="#FFFFFF" BorderThickness="2">
                     <Border.Effect>
                         <DropShadowEffect BlurRadius="6" Color="Black" OffsetX="0" OffsetY="2" Opacity="0.6"/>
                     </Border.Effect>
                     <TextBlock Text="◄ ►" Foreground="White" FontSize="11" FontWeight="Bold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                               HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"/>
                 </Border>
             </Grid>
         </Grid>
