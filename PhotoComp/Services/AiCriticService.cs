@@ -183,15 +183,16 @@ public static class AiCriticService
         Respond ONLY with a valid JSON object matching this exact schema (no markdown fences, no extra text):
         {
           "severity": "none|minor|moderate|severe",
+          "score": <overall quality score: 1 = low quality, 3 = average, 5 = pro quality>,
           "issues": [
             { "area": "<short label>", "description": "<what is wrong>", "severity": "minor|moderate|severe" }
           ],
           "positive_prompt_additions": "<comma-separated terms to ADD to the positive prompt, or empty string>",
           "negative_prompt_additions": "<comma-separated terms to ADD to the negative prompt, or empty string>",
           "parameter_suggestions": "<advice on CFG scale, steps, sampler, seed, etc., or empty string>",
-          "summary": "<one or two sentence plain-English summary>",
-          "score": <overall quality score: 1 = low quality, 3 = average, 5 = pro quality>
+          "summary": "<one or two sentence plain-English summary>"
         }
+        The "score" field is required in every response, even when severity is "none".
         If the image looks clean, return severity "none", an empty issues array, and explain in summary.
         """;
 
@@ -228,14 +229,15 @@ public static class AiCriticService
         Respond ONLY with a valid JSON object matching this exact schema (no markdown fences, no extra text):
         {
           "severity": "none|minor|moderate|severe",
+          "score": <overall quality score: 1 = low quality, 3 = average, 5 = pro quality>,
           "issues": [
             { "area": "<short label>", "description": "<what could be improved>", "severity": "minor|moderate|severe" }
           ],
           "editing_suggestions": "<specific post-processing or cropping suggestions, or empty string>",
           "camera_settings_notes": "<comments on ISO, aperture, shutter speed, focal length choices, or empty string>",
-          "summary": "<one or two sentence plain-English summary>",
-          "score": <overall quality score: 1 = low quality, 3 = average, 5 = pro quality>
+          "summary": "<one or two sentence plain-English summary>"
         }
+        The "score" field is required in every response, even when severity is "none".
         If the photo needs no changes, return severity "none", an empty issues array, and explain in summary.
         """;
 

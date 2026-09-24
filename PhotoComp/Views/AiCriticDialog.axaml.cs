@@ -24,7 +24,7 @@ public partial class AiCriticDialog : Window
         // Severity badge
         SeverityText.Text = report.Severity.ToString();
         SeverityBadge.Background = SeverityColor(report.Severity);
-        ScoreText.Text = report.Score > 0 ? $"Score: {report.Score}/5" : "";
+        ScoreText.Text = report.Score > 0 ? $"Score: {report.Score}/5" : "Score: N/A";
 
         SummaryText.Text = report.Summary;
 
