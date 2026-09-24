@@ -40,7 +40,7 @@
                         VerticalAlignment="Center" Margin="0,40">
                 <TextBlock Text="Analyzing image…" FontSize="14"
                            HorizontalAlignment="Center" Opacity="0.8"/>
-                <TextBlock Text="This may take up to 2–3 minutes." FontSize="11"
+                <TextBlock Text="This may take up to 2–4 minutes." FontSize="11"
                            HorizontalAlignment="Center" Opacity="0.5"/>
             </StackPanel>
 

@@ -279,10 +279,23 @@ public partial class MainWindow : Window
         {
             Avalonia.Threading.Dispatcher.UIThread.Post(() =>
             {
-                if (t.IsFaulted)
-                    dialog.ShowError(FriendlyError(t.Exception?.InnerException));
-                else
-                    dialog.ShowReport(t.Result);
+                try
+                {
+                    // Canceled (e.g. request timeout) must be handled separately — t.Result
+                    // throws TaskCanceledException on a canceled task.
+                    if (t.IsCanceled)
+                        dialog.ShowError(FriendlyError(new TaskCanceledException()));
+                    else if (t.IsFaulted)
+                        dialog.ShowError(FriendlyError(t.Exception?.InnerException));
+                    else
+                        dialog.ShowReport(t.Result);
+                }
+                catch (Exception ex)
+                {
+                    // Last-resort guard: an unhandled exception here would crash the whole app
+                    // since there's no global dispatcher exception handler.
+                    dialog.ShowError(FriendlyError(ex));
+                }
             });
         });
         await dialog.ShowDialog(this);
@@ -303,7 +316,7 @@ public partial class MainWindow : Window
         if (msg.Contains("401"))      return "Authentication failed — check the API key.";
         if (msg.Contains("404"))      return "Endpoint not found — check the API URL.";
         if (msg.Contains("cancel") ||
-            msg.Contains("abort"))    return "Request timed out after 2.5 minutes.";
+            msg.Contains("abort"))    return "Request timed out after 3.5 minutes.";
         if (msg.Contains("non-JSON")) return msg; // include the raw content for debugging
         return $"Analysis failed: {msg}";
     }

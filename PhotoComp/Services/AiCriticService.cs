@@ -19,7 +19,7 @@ public static class AiCriticService
 
     private const int MaxLongEdge  = 1536;          // longest dimension cap — mirrors the JS plugin
     private const int MaxRawBytes   = 2 * 1024 * 1024; // force resize if raw file > 2 MB
-    private const int TimeoutMs     = 150_000;
+    private const int TimeoutMs     = 210_000;
     private const int MaxTokens     = 2500;
     private const double Temperature = 0.3;
 
@@ -315,7 +315,7 @@ public static class AiCriticService
             .ToList();
 
         var summary = obj["summary"]?.GetValue<string>() ?? "";
-        var score   = obj["score"]?.GetValue<int>() ?? 0;
+        var score   = ParseScore(obj["score"]);
 
         if (isAi)
         {
@@ -438,6 +438,16 @@ public static class AiCriticService
             "severe"   => AiCriticSeverity.Severe,
             _          => AiCriticSeverity.None
         };
+
+    /// <summary>Tolerates the LLM returning the score as a number, numeric string, or float.</summary>
+    private static int ParseScore(JsonNode? node)
+    {
+        if (node is not JsonValue value) return 0;
+        if (value.TryGetValue<int>(out var i)) return i;
+        if (value.TryGetValue<double>(out var d)) return (int)Math.Round(d);
+        if (value.TryGetValue<string>(out var s) && int.TryParse(s, out var parsed)) return parsed;
+        return 0;
+    }
 
     /// <summary>Returns null for empty/whitespace strings, otherwise the original value.</summary>
     private static string? Nz(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
