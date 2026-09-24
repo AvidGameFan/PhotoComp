@@ -13,6 +13,9 @@ public static class ImageLoaderService
     private static readonly string[] SupportedExtensions =
         [".jpg", ".jpeg", ".png"];
 
+    public static bool IsSupportedExtension(string filePath) =>
+        SupportedExtensions.Contains(System.IO.Path.GetExtension(filePath).ToLowerInvariant());
+
     /// <summary>
     /// Scans <paramref name="folderPath"/> for supported images, reads EXIF metadata
     /// concurrently, and returns a list sorted by date taken (ascending).
@@ -61,6 +64,24 @@ public static class ImageLoaderService
     /// <remarks>Synchronous convenience wrapper used by unit tests.</remarks>
     public static IReadOnlyList<ImageItem> LoadImages(string folderPath)
         => LoadImagesAsync(folderPath).GetAwaiter().GetResult();
+
+    /// <summary>Reads metadata for a single file, e.g. one just detected by a folder watcher.</summary>
+    public static async Task<ImageItem> LoadSingleImageAsync(string filePath)
+    {
+        var (dateTaken, width, height, prompt, exifCaption, exifDetails, aiDetails) =
+            await ReadMetadataAsync(filePath).ConfigureAwait(false);
+
+        return new ImageItem(
+            FilePath:    filePath,
+            FileName:    System.IO.Path.GetFileName(filePath),
+            DateTaken:   dateTaken,
+            Width:       width,
+            Height:      height,
+            Prompt:      prompt,
+            ExifCaption: exifCaption,
+            ExifDetails: exifDetails,
+            AiDetails:   aiDetails);
+    }
 
     private static async Task<(DateTime dateTaken, int width, int height, string? prompt, string? exifCaption, ExifDetails? exifDetails, AiDetails? aiDetails)>
         ReadMetadataAsync(string filePath)

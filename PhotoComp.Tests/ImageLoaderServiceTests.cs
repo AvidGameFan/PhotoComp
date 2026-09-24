@@ -129,6 +129,47 @@ public class ImageLoaderServiceTests : IDisposable
         Assert.Empty(items);
     }
 
+    // ── IsSupportedExtension (used by the folder watcher to filter new files) ─
+
+    [Theory]
+    [InlineData("photo.jpg")]
+    [InlineData("photo.JPG")]
+    [InlineData("photo.jpeg")]
+    [InlineData("photo.png")]
+    public void IsSupportedExtension_TrueForSupportedTypes(string fileName)
+    {
+        Assert.True(ImageLoaderService.IsSupportedExtension(fileName));
+    }
+
+    [Theory]
+    [InlineData("photo.bmp")]
+    [InlineData("readme.txt")]
+    [InlineData("photo")]
+    public void IsSupportedExtension_FalseForUnsupportedTypes(string fileName)
+    {
+        Assert.False(ImageLoaderService.IsSupportedExtension(fileName));
+    }
+
+    // ── LoadSingleImageAsync (used by the folder watcher for newly-added files) ─
+
+    [Fact]
+    public async Task LoadSingleImageAsync_PopulatesFileNameAndPath()
+    {
+        var path = WriteFakeJpeg("single.jpg", DateTime.Now);
+        var item = await ImageLoaderService.LoadSingleImageAsync(path);
+        Assert.Equal(path, item.FilePath);
+        Assert.Equal("single.jpg", item.FileName);
+    }
+
+    [Fact]
+    public async Task LoadSingleImageAsync_FallsBackToFileWriteTime_WhenNoExif()
+    {
+        var expected = new DateTime(2023, 7, 15, 10, 0, 0);
+        var path = WriteFakeJpeg("single_noexif.jpg", expected);
+        var item = await ImageLoaderService.LoadSingleImageAsync(path);
+        Assert.Equal(expected, item.DateTaken, TimeSpan.FromSeconds(1));
+    }
+
     // ── Resilience ────────────────────────────────────────────────────
 
     [Fact]

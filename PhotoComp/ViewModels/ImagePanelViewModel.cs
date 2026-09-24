@@ -54,6 +54,30 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
     public ImageItem? CurrentImage =>
         _images.Count > 0 ? _images[CurrentIndex] : null;
 
+    /// <summary>
+    /// Call after the underlying (shared, mutable) <see cref="Images"/> list changes size,
+    /// e.g. a file was added by the folder watcher. <paramref name="newIndex"/> should be
+    /// <see cref="CurrentIndex"/> shifted to keep pointing at the same image if items were
+    /// inserted before it; pass the unchanged value otherwise.
+    /// </summary>
+    public void RefreshAfterImagesChanged(int newIndex)
+    {
+        if (newIndex != CurrentIndex)
+        {
+            CurrentIndex = newIndex;
+            return;
+        }
+
+        // CurrentIndex itself didn't move, but Count-dependent properties still need refreshing.
+        OnPropertyChanged(nameof(CurrentImage));
+        OnPropertyChanged(nameof(IsCurrentHearted));
+        OnPropertyChanged(nameof(HeartGlyph));
+        OnPropertyChanged(nameof(PositionLabel));
+        OnPropertyChanged(nameof(InfoText));
+        OnPropertyChanged(nameof(PromptText));
+        OnPropertyChanged(nameof(ExifDetailRows));
+    }
+
     public bool IsCurrentHearted =>
         CurrentImage is not null && _selectedPaths.Contains(CurrentImage.FilePath);
 

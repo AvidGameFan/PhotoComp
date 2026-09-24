@@ -1066,5 +1066,73 @@ public class MainWindowViewModelTests : IDisposable
         Assert.False(vm.FilmstripItems![0].IsCurrentImage);
         Assert.True(vm.FilmstripItems![1].IsCurrentImage);
     }
+
+    // ── Folder watching ───────────────────────────────────────────────
+    //
+    // The FileSystemWatcher → Dispatcher.UIThread.InvokeAsync pipeline requires a running
+    // Avalonia dispatcher loop, which this plain xUnit host doesn't provide (unlike the real
+    // app). So instead of a flaky end-to-end test that waits on the real watcher, we call
+    // InsertNewImage (internal, exposed via InternalsVisibleTo) directly — it's the same
+    // sorting/index-shifting logic the watcher invokes once a new file is ready.
+
+    [Fact]
+    public async Task InsertNewImage_InsertsInDateSortedOrder()
+    {
+        WriteJpeg("existing.jpg", new DateTime(2024, 6, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        var olderItem = new ImageItem(
+            FilePath: Path.Combine(_tempDir, "older.jpg"),
+            FileName: "older.jpg",
+            DateTaken: new DateTime(2024, 1, 1),
+            Width: 0,
+            Height: 0);
+        vm.InsertNewImage(olderItem);
+
+        Assert.Equal(2, vm.Images.Count);
+        Assert.Equal("older.jpg", vm.Images[0].FileName);
+        Assert.Equal("existing.jpg", vm.Images[1].FileName);
+    }
+
+    [Fact]
+    public async Task InsertNewImage_ShiftsPanelCurrentIndex_WhenInsertedBeforeIt()
+    {
+        WriteJpeg("existing.jpg", new DateTime(2024, 6, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+        Assert.Equal(0, vm.LeftPanel!.CurrentIndex);
+
+        // Older date than the existing file — inserted BEFORE it, so the panel's index
+        // should shift to keep pointing at the same photo.
+        var olderItem = new ImageItem(
+            FilePath: Path.Combine(_tempDir, "older.jpg"),
+            FileName: "older.jpg",
+            DateTaken: new DateTime(2024, 1, 1),
+            Width: 0,
+            Height: 0);
+        vm.InsertNewImage(olderItem);
+
+        Assert.Equal(1, vm.LeftPanel!.CurrentIndex);
+        Assert.Equal("existing.jpg", vm.LeftPanel!.CurrentImage!.FileName);
+    }
+
+    [Fact]
+    public async Task InsertNewImage_IgnoresDuplicateFilePath()
+    {
+        WriteJpeg("existing.jpg", new DateTime(2024, 6, 1));
+        var vm = MakeVm();
+        await vm.LoadFolderCommand.ExecuteAsync(null);
+
+        var duplicate = new ImageItem(
+            FilePath: vm.Images[0].FilePath,
+            FileName: vm.Images[0].FileName,
+            DateTaken: vm.Images[0].DateTaken,
+            Width: 0,
+            Height: 0);
+        vm.InsertNewImage(duplicate);
+
+        Assert.Single(vm.Images);
+    }
 }
 

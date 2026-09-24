@@ -176,6 +176,7 @@ public static class AiCriticService
         - Hair clumping or unrealistic physics
         - Wrong number of objects (e.g. six-legged animals)
         - Incorrect perspective or scale
+        - Composition: rule of thirds, leading lines, framing, balance, subject placement
 
         Also consider the generation parameters supplied in the user message and whether they may be contributing to the issues.
 
@@ -188,7 +189,8 @@ public static class AiCriticService
           "positive_prompt_additions": "<comma-separated terms to ADD to the positive prompt, or empty string>",
           "negative_prompt_additions": "<comma-separated terms to ADD to the negative prompt, or empty string>",
           "parameter_suggestions": "<advice on CFG scale, steps, sampler, seed, etc., or empty string>",
-          "summary": "<one or two sentence plain-English summary>"
+          "summary": "<one or two sentence plain-English summary>",
+          "score": <overall quality score: 1 = low quality, 3 = average, 5 = pro quality>
         }
         If the image looks clean, return severity "none", an empty issues array, and explain in summary.
         """;
@@ -209,6 +211,20 @@ public static class AiCriticService
 
         Consider the EXIF data supplied in the user message when commenting on camera settings choices.
 
+        Types of Composition:
+         - Center - The subject is placed in the center of the frame.  Hard to do well.  Best when there is symmetry.
+         - Rule of Thirds - The frame is divided into a 3x3 grid, and the subject is placed along the lines or at the intersections of the lines.  A person’s closest eye to the camera should be placed at one of these intersections.
+         - Leading Lines - Natural lines in the scene guide the viewer's eye towards the subject. Can also be curved lines. Adds depth and direction to the image.
+         - Framing - Elements within the scene are used to frame the subject, drawing attention and adding context.
+         - Diagonal - The subject or key elements are placed along diagonal lines, creating a sense of movement and dynamism.
+         - Symmetry - The composition is balanced and mirrored, often creating a striking and harmonious image.
+         - Golden Ratio - The composition follows the golden ratio spiral, guiding the viewer's eye through the image in a natural and aesthetically pleasing way.
+         - Golden Triangle - The composition is divided into triangles, and the subject is placed along the lines or at the intersections, creating a dynamic and balanced image.
+         - Fibonacci Spiral - The composition follows the Fibonacci spiral, similar to the golden ratio, guiding the viewer's eye through the image in a natural and aesthetically pleasing way.
+         - Asymmetry - The composition intentionally avoids symmetry, creating visual interest and tension through imbalance.
+         - Minimalism - The composition uses a minimal number of elements, emphasizing simplicity and negative space to draw attention to the subject.
+         - Negative Space - The composition makes use of empty or open space around the subject to create emphasis and a sense of scale.
+
         Respond ONLY with a valid JSON object matching this exact schema (no markdown fences, no extra text):
         {
           "severity": "none|minor|moderate|severe",
@@ -217,7 +233,8 @@ public static class AiCriticService
           ],
           "editing_suggestions": "<specific post-processing or cropping suggestions, or empty string>",
           "camera_settings_notes": "<comments on ISO, aperture, shutter speed, focal length choices, or empty string>",
-          "summary": "<one or two sentence plain-English summary>"
+          "summary": "<one or two sentence plain-English summary>",
+          "score": <overall quality score: 1 = low quality, 3 = average, 5 = pro quality>
         }
         If the photo needs no changes, return severity "none", an empty issues array, and explain in summary.
         """;
@@ -298,6 +315,7 @@ public static class AiCriticService
             .ToList();
 
         var summary = obj["summary"]?.GetValue<string>() ?? "";
+        var score   = obj["score"]?.GetValue<int>() ?? 0;
 
         if (isAi)
         {
@@ -306,6 +324,7 @@ public static class AiCriticService
                 Severity:                severity,
                 Issues:                  issues,
                 Summary:                 summary,
+                Score:                   score,
                 PositivePromptAdditions: Nz(obj["positive_prompt_additions"]?.GetValue<string>()),
                 NegativePromptAdditions: Nz(obj["negative_prompt_additions"]?.GetValue<string>()),
                 ParameterSuggestions:    Nz(obj["parameter_suggestions"]?.GetValue<string>()),
@@ -319,6 +338,7 @@ public static class AiCriticService
                 Severity:                severity,
                 Issues:                  issues,
                 Summary:                 summary,
+                Score:                   score,
                 PositivePromptAdditions: null,
                 NegativePromptAdditions: null,
                 ParameterSuggestions:    null,

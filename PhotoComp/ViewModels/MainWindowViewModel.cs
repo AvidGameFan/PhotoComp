@@ -29,6 +29,18 @@ public sealed partial class MainWindowViewModel : ViewModelBase
     [NotifyCanExecuteChangedFor(nameof(MoveSelectedCommand))]
     private IReadOnlyList<ImageItem> _images = [];
 
+    // Backing list for Images: kept as a plain List so newly-detected files can be inserted
+    // in place (Images wraps this same list via AsReadOnly(), so existing panels/filmstrip
+    // see the change live without needing to be recreated).
+    private List<ImageItem> _imagesList = [];
+    private System.IO.FileSystemWatcher? _folderWatcher;
+
+    private void SetImages(List<ImageItem> items)
+    {
+        _imagesList = items;
+        Images = _imagesList.AsReadOnly();
+    }
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(PushLeftToRightCommand))]
     [NotifyCanExecuteChangedFor(nameof(PushRightToLeftCommand))]
@@ -78,7 +90,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         try
         {
             var loaded = await ImageLoaderService.LoadImagesAsync(folder);
-            Images = loaded;
+            SetImages(loaded.ToList());
             _selectedPaths.Clear();
 
             int leftIdx = 0;
@@ -99,6 +111,7 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             SetActivePanel(LeftPanel);
             RebuildFilmstrip(Images, leftIdx);
             CurrentFolder = folder;
+            SetupFolderWatcher(folder);
 
             OnPropertyChanged(nameof(SelectedCount));
             OnPropertyChanged(nameof(HasSelections));
@@ -168,11 +181,11 @@ public sealed partial class MainWindowViewModel : ViewModelBase
             foreach (var p in result.MovedSourcePaths)
                 _selectedPaths.Remove(p);
 
-            var newImages = Images.Where(i => !movedSet.Contains(i.FilePath)).ToList().AsReadOnly();
+            var newImages = Images.Where(i => !movedSet.Contains(i.FilePath)).ToList();
             var leftIdx  = Math.Min(LeftPanel?.CurrentIndex  ?? 0, Math.Max(0, newImages.Count - 1));
             var rightIdx = Math.Min(RightPanel?.CurrentIndex ?? 0, Math.Max(0, newImages.Count - 1));
 
-            Images = newImages;
+            SetImages(newImages);
             LeftPanel  = newImages.Count > 0 ? CreatePanel(leftIdx)  : null;
             RightPanel = newImages.Count > 0 ? CreatePanel(rightIdx) : null;
             SetActivePanel(LeftPanel);
@@ -290,14 +303,14 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         }
 
         // Rebuild the image list without the deleted item.
-        var newImages = Images.Where(i => i.FilePath != item.FilePath).ToList().AsReadOnly();
+        var newImages = Images.Where(i => i.FilePath != item.FilePath).ToList();
         _selectedPaths.Remove(item.FilePath);
 
         // Clamp each panel's current index to the new list bounds.
         var leftIdx  = Math.Min(LeftPanel?.CurrentIndex  ?? 0, Math.Max(0, newImages.Count - 1));
         var rightIdx = Math.Min(RightPanel?.CurrentIndex ?? 0, Math.Max(0, newImages.Count - 1));
 
-        Images = newImages;
+        SetImages(newImages);
         LeftPanel  = newImages.Count > 0 ? CreatePanel(leftIdx)  : null;
         RightPanel = newImages.Count > 0 ? CreatePanel(rightIdx) : null;
         SetActivePanel(LeftPanel);
@@ -396,5 +409,124 @@ public sealed partial class MainWindowViewModel : ViewModelBase
         var panel = _activePanel ?? LeftPanel;
         if (panel is null || Images.Count == 0) return;
         panel.CurrentIndex = Math.Clamp(item.Index, 0, Images.Count - 1);
+    }
+
+    // ── Folder watching ──────────────────────────────────────────────────────────────────────
+
+    private void SetupFolderWatcher(string folder)
+    {
+        _folderWatcher?.Dispose();
+        _folderWatcher = new System.IO.FileSystemWatcher(folder)
+        {
+            NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.LastWrite,
+            IncludeSubdirectories = false,
+        };
+        _folderWatcher.Created += OnFileCreatedInFolder;
+        _folderWatcher.EnableRaisingEvents = true;
+    }
+
+    private void OnFileCreatedInFolder(object sender, System.IO.FileSystemEventArgs e)
+    {
+        if (!ImageLoaderService.IsSupportedExtension(e.FullPath)) return;
+        _ = HandleNewImageFileAsync(e.FullPath);
+    }
+
+    /// <summary>
+    /// Waits for the file to become readable (it may still be mid-write by whatever
+    /// process created it), reads its metadata, then inserts it in date-sorted order.
+    /// Fires on a FileSystemWatcher thread pool thread, so the insert is marshalled
+    /// back to the UI thread.
+    /// </summary>
+    private async Task HandleNewImageFileAsync(string filePath)
+    {
+        // Give the generating tool a head start before we touch the file at all — some
+        // image generators save in multiple steps (pixels, then metadata) and can throw
+        // a permission error if we open the file for reading in between.
+        await Task.Delay(NewFileInitialDelayMs).ConfigureAwait(false);
+
+        if (!await WaitUntilFileReadyAsync(filePath)) return;
+
+        ImageItem newItem;
+        try
+        {
+            newItem = await ImageLoaderService.LoadSingleImageAsync(filePath);
+        }
+        catch
+        {
+            return; // vanished, unreadable, or unsupported despite the extension match
+        }
+
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => InsertNewImage(newItem));
+    }
+
+    private const int NewFileInitialDelayMs = 1500;
+
+    /// <summary>
+    /// Waits for the file to become readable AND for its size to stop changing across
+    /// consecutive checks — being openable isn't enough, since some generators write
+    /// pixels and metadata in separate passes and a mid-write read would grab a
+    /// truncated image with incomplete metadata.
+    /// </summary>
+    private static async Task<bool> WaitUntilFileReadyAsync(string filePath, int maxAttempts = 30, int delayMs = 300)
+    {
+        long lastSize = -1;
+        int stableCount = 0;
+
+        for (int i = 0; i < maxAttempts; i++)
+        {
+            try
+            {
+                var info = new System.IO.FileInfo(filePath);
+                if (!info.Exists) return false;
+
+                // ReadWrite sharing so our probe never blocks the generating tool's own writes.
+                using (System.IO.File.Open(
+                    filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite))
+                {
+                }
+
+                if (info.Length > 0 && info.Length == lastSize)
+                {
+                    if (++stableCount >= 2) return true; // same size across two checks — write has settled
+                }
+                else
+                {
+                    stableCount = 0;
+                }
+                lastSize = info.Length;
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                return false; // removed again before we got to it
+            }
+            catch (System.IO.IOException)
+            {
+                stableCount = 0;
+            }
+
+            await Task.Delay(delayMs);
+        }
+        return false;
+    }
+
+    internal void InsertNewImage(ImageItem item)
+    {
+        // Guard against duplicate FileSystemWatcher events for the same file.
+        if (_imagesList.Any(i => string.Equals(i.FilePath, item.FilePath, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        var insertIndex = _imagesList.FindIndex(i => i.DateTaken > item.DateTaken);
+        if (insertIndex < 0) insertIndex = _imagesList.Count;
+        _imagesList.Insert(insertIndex, item);
+        OnPropertyChanged(nameof(Images));
+
+        foreach (var panel in new[] { LeftPanel, RightPanel })
+        {
+            if (panel is null) continue;
+            var newIndex = panel.CurrentIndex >= insertIndex ? panel.CurrentIndex + 1 : panel.CurrentIndex;
+            panel.RefreshAfterImagesChanged(newIndex);
+        }
+
+        RebuildFilmstrip(Images, LeftPanel?.CurrentIndex ?? 0);
     }
 }

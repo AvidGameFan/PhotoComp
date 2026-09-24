@@ -61,6 +61,7 @@
                     <Border x:Name="SeverityBadge" CornerRadius="10" Padding="8,3">
                         <TextBlock x:Name="SeverityText" FontSize="11" Foreground="White"/>
                     </Border>
+                    <TextBlock x:Name="ScoreText" FontSize="12" Opacity="0.85" VerticalAlignment="Center"/>
                 </StackPanel>
 
                 <!-- Summary -->

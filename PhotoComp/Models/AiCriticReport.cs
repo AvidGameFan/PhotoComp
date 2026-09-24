@@ -17,6 +17,8 @@ public sealed record AiCriticReport(
     AiCriticSeverity Severity,
     IReadOnlyList<AiCriticIssue> Issues,
     string Summary,
+    /// <summary>Overall quality score: 1 = low quality, 3 = average, 5 = pro quality.</summary>
+    int Score,
     // AI-image fields
     string? PositivePromptAdditions,
     string? NegativePromptAdditions,
