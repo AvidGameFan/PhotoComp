@@ -21,9 +21,12 @@ For photos, the single-view is helpful for zooming in on details and removing ph
 - **EXIF-sorted loading** — images are sorted by date taken (falls back to file modification time when EXIF is absent)
 - **Favorite selection** — click the heart icon on any image to mark it; click again to deselect
 - **Copy with sidecars** — copies selected images to a chosen folder; automatically copies matching sidecar files (RAW, XMP, JSON, TXT) alongside each image
+- **Move with sidecars** — moves selected images to a chosen folder, including matching sidecar files; existing destination files are skipped safely
 - **Drag-and-drop opening** — drop a folder or image file onto the app to open it quickly
 - **Delete with sidecars** — permanently deletes the current image and any accompanying sidecar files after confirmation
 - **Single/dual view toggle** — switch between side-by-side and single-panel view from the toolbar
+- **Comparison window** — open a large split-slider comparison of the two panel images; drag the divider, use the slider or arrow keys, swap images, and zoom or pan both images together
+- **Filmstrip** — toggle a bottom thumbnail strip for quick navigation; the current image and favorites are marked
 - **Busy indicator** — a loading overlay and wait cursor appear while a large folder is being scanned
 - **Thumbnail Selector Dialog** — view all images as thumbnails for easy selection
 - **AI Critic** — send the current image to a local or cloud vision LLM for artifact detection, composition feedback, prompt suggestions, and camera settings advice
@@ -121,6 +124,14 @@ Click the **♡** heart icon in the top-right corner of a panel to mark the curr
 
 For each image copied, PhotoComp also copies any matching sidecar files from the same source folder — RAW originals (`.arw`, `.cr2`, `.cr3`, `.nef`, `.raf`, `.rw2`, and [many more](#sidecar-formats)), XMP metadata (`.xmp`), and plain-text companions (`.json`, `.txt`). For example, `IMG_1234.jpg` will carry over `IMG_1234.arw` and `IMG_1234.xmp` if they exist. Originals are never modified or overwritten.
 
+### Moving selected images
+
+1.  Heart one or more images.
+2.  Click **📦 Move Selected (N)** in the toolbar.
+3.  Choose a destination folder.
+
+PhotoComp moves the selected images and matching sidecar files, skips files already present at the destination, and removes successfully moved images from the current folder view. A summary dialog reports moved, skipped, and failed files. Unlike copying, moving removes the source files after each destination copy succeeds.
+
 ### Deleting images
 
 Press **Del** on the keyboard (or use the delete button in the panel) to permanently delete the current image. A confirmation dialog lists the image and any sidecar files that will also be removed. Deletion cannot be undone.
@@ -128,6 +139,16 @@ Press **Del** on the keyboard (or use the delete button in the panel) to permane
 ### Single-panel view
 
 Click **⊟ Single View** in the toolbar to hide the right panel and give the left panel the full window width. Click **⊞ Dual View** to restore the side-by-side layout.
+
+### Comparing images
+
+In dual view, load different images in the two panels and click **↔ Compare**. The comparison window opens with the left image overlaid on the right image. Drag the center divider or use the slider to reveal more of either image. **←** and **→** move the divider in 5% steps; **Home** and **End** show only the left or right image, and **Space** switches between those extremes. Use **⇄ Swap Left / Right** to exchange the images or **50%** to recenter the divider.
+
+The comparison window supports synchronized wheel zoom and drag-to-pan. Double-click to switch between fit-to-window and pixel-level zoom. Press **Esc** or click **Close** to dismiss it.
+
+### Filmstrip navigation
+
+Click **🎞 Filmstrip** to show or hide a scrollable thumbnail strip along the bottom of the window. Click a thumbnail to navigate the active panel. The active image is outlined, and favorited images show a red heart.
 
 ### Info overlay
 
@@ -137,7 +158,7 @@ Each panel shows a small overlay in the bottom-left corner with the image's pixe
 3024×4032  |  2024-06-15 14:32:07
 ```
 
-The bottom-right corner displays camera EXIF info for photos, or embedded prompt info for AI generated images.
+Click the bottom-left info overlay to expand the available camera EXIF details, including camera, lens, exposure, ISO, and white balance. The bottom-right corner displays embedded prompt info for AI generated images; right-click it to copy the prompt.
 
 ---
 
@@ -171,13 +192,14 @@ PhotoComp automatically detects the image type and chooses the appropriate promp
 **For AI-generated images** (images that contain embedded Stable Diffusion or similar metadata):
 - Checks for common generation artifacts: extra fingers, facial anomalies, anatomy errors, melting objects, garbled text, lighting inconsistencies, etc.
 - Reports issues with a severity rating (Minor / Moderate / Severe)
+- Gives the image an overall quality score from 1 to 5
 - Suggests terms to **add to the positive prompt** and **negative prompt**
 - Recommends changes to CFG scale, sampler, steps, or other parameters
 
 **For photographs** (images with EXIF camera data, or no AI metadata):
-- Critiques composition, exposure, focus, lighting, colour, and noise
+- Critiques composition, exposure, focus, lighting, color, and noise
 - Considers the actual EXIF values (ISO, aperture, shutter speed, focal length) when commenting on settings choices
-- Suggests specific **editing improvements** such as cropping, straightening, dodging/burning, and colour grading
+- Suggests specific **editing improvements** such as cropping, straightening, dodging/burning, and color grading
 - Notes whether camera settings were well-matched to the scene
 
 Images larger than 2 megapixels are automatically downscaled before being sent to keep request size reasonable.
