@@ -359,19 +359,70 @@ public static class ImageLoaderService
 
         if (raw.TrimStart().StartsWith('['))
         {
+            string?[]? names;
             try
             {
-                var names = JsonSerializer.Deserialize<string?[]>(raw);
-                var joined = string.Join(", ", (names ?? []).Where(n => !string.IsNullOrWhiteSpace(n)));
-                return string.IsNullOrWhiteSpace(joined) ? null : joined;
+                names = JsonSerializer.Deserialize<string?[]>(raw);
             }
             catch (JsonException)
             {
-                return null;
+                names = ParseSingleQuotedStringArray(raw);
             }
+
+            var joined = string.Join(", ", (names ?? []).Where(n => !string.IsNullOrWhiteSpace(n)));
+            return string.IsNullOrWhiteSpace(joined) ? null : joined;
         }
 
         return raw;
+    }
+
+    private static string?[]? ParseSingleQuotedStringArray(string raw)
+    {
+        var trimmed = raw.Trim();
+        if (trimmed.Length < 2 || trimmed[0] != '[' || trimmed[^1] != ']')
+            return null;
+
+        var names = new List<string?>();
+        int i = 1;
+        while (i < trimmed.Length - 1)
+        {
+            while (i < trimmed.Length - 1 && (char.IsWhiteSpace(trimmed[i]) || trimmed[i] == ','))
+                i++;
+            if (i == trimmed.Length - 1)
+                break;
+            if (trimmed[i++] != '\'')
+                return null;
+
+            var name = new System.Text.StringBuilder();
+            bool closed = false;
+            while (i < trimmed.Length - 1)
+            {
+                char c = trimmed[i++];
+                if (c == '\\' && i < trimmed.Length - 1 && trimmed[i] is '\'' or '\\')
+                {
+                    name.Append(trimmed[i++]);
+                }
+                else if (c == '\'')
+                {
+                    closed = true;
+                    break;
+                }
+                else
+                {
+                    name.Append(c);
+                }
+            }
+
+            if (!closed)
+                return null;
+            names.Add(name.ToString());
+            while (i < trimmed.Length - 1 && char.IsWhiteSpace(trimmed[i]))
+                i++;
+            if (i < trimmed.Length - 1 && trimmed[i] != ',')
+                return null;
+        }
+
+        return names.ToArray();
     }
 
     // ── ComfyUI workflow JSON normaliser ─────────────────────────────────────────────────────

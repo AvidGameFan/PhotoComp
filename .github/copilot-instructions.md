@@ -52,4 +52,23 @@ For multi-step tasks, state a brief plan:
 3. [Step] → verify: [check]
 ```
 
+## 5. Architectural Contraints
+
+Refactor to the principle first, then change behavior.
+
+1. Separation of Concerns - Keep business logic, presentation, and data access layers distinct.
+2. Single Responsibility Principle - Each module or class should have one, and only one, reason to change.
+3. Dependency Inversion - Depend on abstractions, not on concrete implementations.
+4. Interface Segregation - Prefer many small, specific interfaces over a large, general-purpose one.
+5. KISS - Keep It Simple, Stupid. Favor simplicity and clarity over cleverness and complexity.
+6. YAGNI - You Aren't Gonna Need It. Avoid adding functionality until it is necessary.
+7. DRY - Don't Repeat Yourself. Avoid duplicating code; abstract common functionality instead.  But don't overdo it.
+8. Law of Demeter - Each unit should have limited knowledge about other units: only talk to your immediate friends.
+9. Principle of Least Astonishment - Design interfaces and behaviors to match user expectations and minimize surprises.
+10. Open/Closed Principle - Software entities (classes, modules, functions, etc.) should be open for extension but closed for modification.
+11. Liskov Substitution Principle - Subtypes must be substitutable for their base types without altering the correctness of the program.
+12. Composition Over Inheritance - Prefer composing objects with behavior over inheriting from base classes to achieve code reuse and flexibility.
+13. High Cohesion & Loose Coupling - Group related functionality together (high cohesion) and minimize dependencies between modules (loose coupling).
+14. Encapsulation - Keep the internal state of objects hidden and expose only what is necessary through well-defined interfaces.
+
 Strong success criteria let you loop independently, when aligned. Weak criteria ("make it work") require constant clarification.

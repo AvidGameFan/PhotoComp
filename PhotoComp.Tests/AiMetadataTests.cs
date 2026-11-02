@@ -199,6 +199,15 @@ public sealed class AiMetadataTests : IDisposable
         Assert.Equal("Flux/enabled_one.safetensors, Flux/enabled_two.safetensors", item.AiDetails?.Loras);
     }
 
+    [Fact]
+    public void EmbeddedMetadata_PythonStyleLoraArray_ParsesAllLoras()
+    {
+        const string loras = "['krea2/Some Anime Style - Krea2', 'krea2/another_lora']";
+        var item = LoadSinglePng("python_lora_array.png", ("use_lora_model", loras));
+
+        Assert.Equal("krea2/Some Anime Style - Krea2, krea2/another_lora", item.AiDetails?.Loras);
+    }
+
     // ── A1111-style "parameters" text block (also emitted by newer ComfyUI metadata nodes) ────
 
     private const string A1111Parameters =
