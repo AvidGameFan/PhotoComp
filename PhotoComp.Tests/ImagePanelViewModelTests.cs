@@ -501,7 +501,10 @@ public class ImagePanelViewModelTests
             GuidanceScale:  "7.5",
             Steps:          "20",
             Loras:          "Flux/style_lora_v1",
-            TextEncoders:   null);
+            TextEncoders:   null,
+            TextEncoderModel: "encoder.safetensors",
+            TokenizerModel: "tokenizer.json",
+            EmbeddingsModel: "embeddings");
         var images = new List<ImageItem> { MakeAiItem("a cat", ai) }.AsReadOnly();
         var vm = new ImagePanelViewModel(images, new ZoomState(), [], 0);
 
@@ -512,6 +515,9 @@ public class ImagePanelViewModelTests
         Assert.Contains(rows, r => r.Label == "Scheduler" && r.Value == "karras");
         Assert.Contains(rows, r => r.Label == "Steps"     && r.Value == "20");
         Assert.Contains(rows, r => r.Label == "LoRA"      && r.Value == "Flux/style_lora_v1");
+        Assert.Contains(rows, r => r.Label == "Text Encoder" && r.Value == "encoder.safetensors");
+        Assert.Contains(rows, r => r.Label == "Tokenizer" && r.Value == "tokenizer.json");
+        Assert.Contains(rows, r => r.Label == "Embeddings" && r.Value == "embeddings");
         Assert.Contains(rows, r => r.Label == "Guidance"  && r.Value == "7.5");
         Assert.Contains(rows, r => r.Label == "Seed"      && r.Value == "12345");
         Assert.Contains(rows, r => r.Label == "Negative"  && r.Value == "ugly");

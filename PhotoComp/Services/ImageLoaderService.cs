@@ -325,13 +325,22 @@ public static class ImageLoaderService
         if (!fields.TryGetValue("num_inference_steps", out var steps))
             fields.TryGetValue("steps", out steps);
         fields.TryGetValue("use_lora_model",              out var loraRaw);
-        var loras = ResolveLoras(loraRaw);
+        fields.TryGetValue("lora_alpha",                  out var loraAlphaRaw);
+        var loras = ResolveLoras(loraRaw, loraAlphaRaw);
         fields.TryGetValue("text_encoders",                out var textEncoders);
+        fields.TryGetValue("use_text_encoder_model",       out var textEncoderModel);
+        fields.TryGetValue("use_tokenizer_model",          out var tokenizerModel);
+        fields.TryGetValue("use_embeddings_model",         out var embeddingsModel);
+
+        textEncoderModel = NormalizeOptionalMetadata(textEncoderModel);
+        tokenizerModel = NormalizeOptionalMetadata(tokenizerModel);
+        embeddingsModel = NormalizeOptionalMetadata(embeddingsModel);
 
         bool hasData = negPrompt != null || seed != null || model != null
                     || vaeModel != null || sampler != null || scheduler != null
                     || guidanceScale != null || steps != null || loras != null
-                    || textEncoders != null;
+                    || textEncoders != null || textEncoderModel != null
+                    || tokenizerModel != null || embeddingsModel != null;
         if (!hasData) return null;
 
         return new AiDetails(
@@ -344,14 +353,22 @@ public static class ImageLoaderService
             GuidanceScale:  string.IsNullOrWhiteSpace(guidanceScale) ? null : guidanceScale,
             Steps:          string.IsNullOrWhiteSpace(steps)         ? null : steps,
             Loras:          loras,
-            TextEncoders:   string.IsNullOrWhiteSpace(textEncoders)  ? null : textEncoders);
+            TextEncoders:   string.IsNullOrWhiteSpace(textEncoders)  ? null : textEncoders,
+            TextEncoderModel: textEncoderModel,
+            TokenizerModel: tokenizerModel,
+            EmbeddingsModel: embeddingsModel);
     }
+
+    private static string? NormalizeOptionalMetadata(string? value) =>
+        string.IsNullOrWhiteSpace(value) || value.Trim().Equals("none", StringComparison.OrdinalIgnoreCase)
+            ? null
+            : value.Trim();
 
     /// <summary>
     /// Parses Easy Diffusion's <c>use_lora_model</c> field, which may be a single file path,
     /// a JSON array of file paths, or absent/null/"None" when no LoRA was used.
     /// </summary>
-    private static string? ResolveLoras(string? raw)
+    private static string? ResolveLoras(string? raw, string? alphaRaw)
     {
         if (string.IsNullOrWhiteSpace(raw) || raw.Equals("null", StringComparison.OrdinalIgnoreCase)
             || raw.Equals("none", StringComparison.OrdinalIgnoreCase))
@@ -369,11 +386,63 @@ public static class ImageLoaderService
                 names = ParseSingleQuotedStringArray(raw);
             }
 
-            var joined = string.Join(", ", (names ?? []).Where(n => !string.IsNullOrWhiteSpace(n)));
+            if (names == null)
+                return null;
+
+            var alphas = ParseLoraAlphas(alphaRaw);
+            var resolved = new List<string>();
+            for (int i = 0; i < names.Length; i++)
+            {
+                var name = names[i];
+                if (string.IsNullOrWhiteSpace(name))
+                    continue;
+
+                var alpha = i < alphas.Length ? alphas[i] : null;
+                resolved.Add(string.IsNullOrWhiteSpace(alpha) ? name : $"{name} ({alpha})");
+            }
+
+            var joined = string.Join(", ", resolved);
             return string.IsNullOrWhiteSpace(joined) ? null : joined;
         }
 
-        return raw;
+        var singleAlpha = ParseSingleLoraAlpha(alphaRaw);
+        return singleAlpha == null ? raw : $"{raw} ({singleAlpha})";
+    }
+
+    private static string? ParseSingleLoraAlpha(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return null;
+
+        var value = raw.Trim();
+        if (value.StartsWith('['))
+            return null;
+
+        return double.TryParse(value, System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out _)
+            ? value
+            : null;
+    }
+
+    private static string?[] ParseLoraAlphas(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return [];
+
+        try
+        {
+            using var document = JsonDocument.Parse(raw);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+                return [];
+
+            return document.RootElement.EnumerateArray()
+                .Select(value => value.ValueKind == JsonValueKind.Number ? value.GetRawText() : null)
+                .ToArray();
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
     }
 
     private static string?[]? ParseSingleQuotedStringArray(string raw)

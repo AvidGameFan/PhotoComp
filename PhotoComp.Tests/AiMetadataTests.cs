@@ -208,6 +208,41 @@ public sealed class AiMetadataTests : IDisposable
         Assert.Equal("krea2/Some Anime Style - Krea2, krea2/another_lora", item.AiDetails?.Loras);
     }
 
+    [Fact]
+    public void EmbeddedMetadata_LoraAlphaValues_AreAppendedToMatchingLoras()
+    {
+        const string loras = """["krea2/Charlotte Anime Style - Krea2", "krea2/fedor_bypass"]""";
+        const string alphas = "[0.5, 0.5]";
+        var item = LoadSinglePng("python_lora_alpha.png",
+            ("use_lora_model", loras),
+            ("lora_alpha", alphas));
+
+        Assert.Equal("krea2/Charlotte Anime Style - Krea2 (0.5), krea2/fedor_bypass (0.5)", item.AiDetails?.Loras);
+    }
+
+    [Fact]
+    public void EmbeddedMetadata_SingleLoraAlphaValue_IsAppended()
+    {
+        var item = LoadSinglePng("single_lora_alpha.png",
+            ("use_lora_model", "krea2/one_lora"),
+            ("lora_alpha", "1.0"));
+
+        Assert.Equal("krea2/one_lora (1.0)", item.AiDetails?.Loras);
+    }
+
+    [Fact]
+    public void EmbeddedMetadata_EncoderTokenizerAndEmbeddingsModels_AreReadAndIgnoreNone()
+    {
+        var item = LoadSinglePng("auxiliary_models.png",
+            ("use_text_encoder_model", "encoder.safetensors"),
+            ("use_tokenizer_model", "None"),
+            ("use_embeddings_model", " embeddings.safetensors "));
+
+        Assert.Equal("encoder.safetensors", item.AiDetails?.TextEncoderModel);
+        Assert.Null(item.AiDetails?.TokenizerModel);
+        Assert.Equal("embeddings.safetensors", item.AiDetails?.EmbeddingsModel);
+    }
+
     // ── A1111-style "parameters" text block (also emitted by newer ComfyUI metadata nodes) ────
 
     private const string A1111Parameters =

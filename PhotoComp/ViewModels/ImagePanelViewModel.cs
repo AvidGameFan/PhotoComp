@@ -138,6 +138,9 @@ public sealed partial class ImagePanelViewModel : ViewModelBase
                 if (!string.IsNullOrEmpty(ai?.Model))          rows.Add(new ExifRow("Model",     ai.Model!));
                 if (!string.IsNullOrEmpty(ai?.VaeModel))        rows.Add(new ExifRow("VAE",       ai.VaeModel!));
                 if (!string.IsNullOrEmpty(ai?.TextEncoders))     rows.Add(new ExifRow("Text Encoders", ai.TextEncoders!));
+                if (!string.IsNullOrEmpty(ai?.TextEncoderModel)) rows.Add(new ExifRow("Text Encoder", ai.TextEncoderModel!));
+                if (!string.IsNullOrEmpty(ai?.TokenizerModel))   rows.Add(new ExifRow("Tokenizer", ai.TokenizerModel!));
+                if (!string.IsNullOrEmpty(ai?.EmbeddingsModel))  rows.Add(new ExifRow("Embeddings", ai.EmbeddingsModel!));
                 if (!string.IsNullOrEmpty(ai?.Loras))            rows.Add(new ExifRow("LoRA",      ai.Loras!));
                 if (!string.IsNullOrEmpty(ai?.Sampler))         rows.Add(new ExifRow("Sampler",   ai.Sampler!));
                 if (!string.IsNullOrEmpty(ai?.Scheduler))       rows.Add(new ExifRow("Scheduler", ai.Scheduler!));

@@ -11,4 +11,7 @@ public sealed record AiDetails(
     string? GuidanceScale,
     string? Steps,
     string? Loras,
-    string? TextEncoders);
+    string? TextEncoders,
+    string? TextEncoderModel = null,
+    string? TokenizerModel = null,
+    string? EmbeddingsModel = null);
