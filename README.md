@@ -10,7 +10,7 @@ This tool is useful for both AI-generated images and camera photos.
 
 For photos, the single-view is helpful for zooming in on details and removing photos that are too blurry to work with. The corresponding RAW file (if existing) will also be removed. Also, the favorites tagging feature allows you to select the best images out of a folder; copying to another working folder, you can then edit further or send off for printing.
 
-### For AI art, the dual-pane feature allows comparisons to pick the best out of multiple revisions of the same image. A lot of intermediate working images can get created; tagging with the favorites feature allows just the best or final versions to be copied to a another folder for safe-keeping.
+For AI art, the dual-pane feature allows comparisons to pick the best out of multiple revisions of the same image. A lot of intermediate working images can get created; tagging with the favorites feature allows just the best or final versions to be copied to a another folder for safe-keeping.
 
 ## Features
 
@@ -166,7 +166,7 @@ Click the bottom-left info overlay to expand the available camera EXIF details, 
 
 PhotoComp can send the currently displayed image to a vision-capable LLM for analysis and return tailored feedback directly in the app.
 
-![PhotoComp AI Critic](PhotoComp AI Critic.png)
+![PhotoComp AI Critic](PhotoComp%20AI%20Critic.png)
 
 ### Setup
 
